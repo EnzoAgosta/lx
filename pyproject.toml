@@ -1,0 +1,12 @@
+[project]
+name = "lx-tools"
+version = "0.0.1"
+description = "In Development. Holding the name of the project."
+readme = "README.md"
+authors = [{ name = "Enzo Agosta", email = "agosta.enzo@gmail.com" }]
+requires-python = ">=3.14"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.10.4,<0.11.0"]
+build-backend = "uv_build"
