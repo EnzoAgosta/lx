@@ -5,7 +5,10 @@ description = "In Development. Holding the name of the project."
 readme = "README.md"
 authors = [{ name = "Enzo Agosta", email = "agosta.enzo@gmail.com" }]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = ["cyclopts>=4.11.0", "orjson>=3.11.8"]
+
+[project.scripts]
+lx = "lx_tools.cli:app"
 
 [build-system]
 requires = ["uv_build>=0.10.4,<0.11.0"]
