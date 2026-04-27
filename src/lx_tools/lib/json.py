@@ -21,3 +21,17 @@ def minify_json(data: bytes, *, sort_keys: bool = False) -> bytes:
 def validate_json(data: bytes) -> None:
     """Validate JSON syntax. Raises on invalid input."""
     orjson.loads(data)
+
+
+def reverse_json(data: bytes) -> bytes:
+    """Sort top-level JSON keys ascending, then reverse their order.
+
+    Note: Only top-level keys are affected. This is a convenience command;
+    it parses, sorts, reverses, and re-serializes, which is deterministic
+    but not efficient.
+    """
+    obj = orjson.loads(data)
+    sorted_bytes = orjson.dumps(obj, option=orjson.OPT_SORT_KEYS)
+    sorted_obj = orjson.loads(sorted_bytes)
+    reversed_obj = {k: sorted_obj[k] for k in reversed(sorted_obj)}
+    return orjson.dumps(reversed_obj)

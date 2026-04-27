@@ -49,3 +49,16 @@ def validate(
         lx_json.validate_json(input.read_bytes())
     except Exception as e:
         sys.exit(f"Invalid JSON: {e}")
+
+
+@app.command
+def reverse(
+    input: Annotated[StdioPath, Parameter(name="input")] = StdioPath("-"),
+    output: Annotated[StdioPath, Parameter(name="output")] = StdioPath("-"),
+) -> None:
+    """Reverse the order of top-level JSON keys.
+
+    Sorts keys ascending, then reverses. Only affects the top level;
+    nested objects are left untouched. Deterministic but not efficient.
+    """
+    output.write_bytes(lx_json.reverse_json(input.read_bytes()))
