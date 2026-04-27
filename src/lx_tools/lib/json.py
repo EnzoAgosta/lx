@@ -6,14 +6,16 @@ def sort_json(data: bytes) -> bytes:
     return orjson.dumps(orjson.loads(data), option=orjson.OPT_SORT_KEYS)
 
 
-def pretty_json(data: bytes) -> bytes:
+def pretty_json(data: bytes, *, sort_keys: bool = False) -> bytes:
     """Pretty-print JSON with 2-space indentation."""
-    return orjson.dumps(orjson.loads(data), option=orjson.OPT_INDENT_2)
+    option = orjson.OPT_INDENT_2 | (orjson.OPT_SORT_KEYS if sort_keys else 0)
+    return orjson.dumps(orjson.loads(data), option=option)
 
 
-def minify_json(data: bytes) -> bytes:
+def minify_json(data: bytes, *, sort_keys: bool = False) -> bytes:
     """Minify JSON by removing unnecessary whitespace."""
-    return orjson.dumps(orjson.loads(data))
+    option = orjson.OPT_SORT_KEYS if sort_keys else 0
+    return orjson.dumps(orjson.loads(data), option=option)
 
 
 def validate_json(data: bytes) -> None:

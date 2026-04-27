@@ -22,18 +22,22 @@ def sort(
 def pretty(
     input: Annotated[StdioPath, Parameter(name="input")] = StdioPath("-"),
     output: Annotated[StdioPath, Parameter(name="output")] = StdioPath("-"),
+    *,
+    sort_keys: bool = False,
 ) -> None:
     """Pretty-print JSON with 2-space indentation."""
-    output.write_bytes(lx_json.pretty_json(input.read_bytes()))
+    output.write_bytes(lx_json.pretty_json(input.read_bytes(), sort_keys=sort_keys))
 
 
 @app.command
 def minify(
     input: Annotated[StdioPath, Parameter(name="input")] = StdioPath("-"),
     output: Annotated[StdioPath, Parameter(name="output")] = StdioPath("-"),
+    *,
+    sort_keys: bool = False,
 ) -> None:
     """Minify JSON by removing unnecessary whitespace."""
-    output.write_bytes(lx_json.minify_json(input.read_bytes()))
+    output.write_bytes(lx_json.minify_json(input.read_bytes(), sort_keys=sort_keys))
 
 
 @app.command
