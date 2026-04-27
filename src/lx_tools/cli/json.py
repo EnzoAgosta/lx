@@ -11,8 +11,8 @@ app = App(name="json", help="JSON utilities.")
 
 @app.command
 def sort(
-    input: Annotated[StdioPath, Parameter(name="input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="output")] = StdioPath("-"),
+    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
+    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
 ) -> None:
     """Sort all JSON keys recursively."""
     output.write_bytes(lx_json.sort_json(input.read_bytes()))
@@ -20,10 +20,10 @@ def sort(
 
 @app.command
 def pretty(
-    input: Annotated[StdioPath, Parameter(name="input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="output")] = StdioPath("-"),
+    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
+    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
     *,
-    sort_keys: bool = False,
+    sort_keys: Annotated[bool, Parameter(name=["--sort-keys", "-s"])] = False,
 ) -> None:
     """Pretty-print JSON with 2-space indentation."""
     output.write_bytes(lx_json.pretty_json(input.read_bytes(), sort_keys=sort_keys))
@@ -31,10 +31,10 @@ def pretty(
 
 @app.command
 def minify(
-    input: Annotated[StdioPath, Parameter(name="input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="output")] = StdioPath("-"),
+    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
+    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
     *,
-    sort_keys: bool = False,
+    sort_keys: Annotated[bool, Parameter(name=["--sort-keys", "-s"])] = False,
 ) -> None:
     """Minify JSON by removing unnecessary whitespace."""
     output.write_bytes(lx_json.minify_json(input.read_bytes(), sort_keys=sort_keys))
@@ -42,7 +42,7 @@ def minify(
 
 @app.command
 def validate(
-    input: Annotated[StdioPath, Parameter(name="input")] = StdioPath("-"),
+    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
 ) -> None:
     """Validate JSON syntax."""
     try:
@@ -53,8 +53,8 @@ def validate(
 
 @app.command
 def reverse(
-    input: Annotated[StdioPath, Parameter(name="input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="output")] = StdioPath("-"),
+    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
+    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
 ) -> None:
     """Reverse the order of top-level JSON keys.
 

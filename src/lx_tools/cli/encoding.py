@@ -1,6 +1,7 @@
 import sys
+from typing import Annotated
 
-from cyclopts import App
+from cyclopts import App, Parameter
 from cyclopts.types import StdioPath
 
 import lx_tools.lib.encoding as lx_encoding
@@ -10,11 +11,11 @@ app = App(name="encoding", help="Encoding detection and conversion utilities.")
 
 @app.command
 def detect(
-    input: StdioPath = StdioPath("-"),
-    output: StdioPath = StdioPath("-"),
+    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
+    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
     *,
-    all: bool = False,
-    verbose: bool = False,
+    all: Annotated[bool, Parameter(name=["--all", "-a"])] = False,
+    verbose: Annotated[bool, Parameter(name=["--verbose", "-v"])] = False,
 ) -> None:
     """Detect the encoding of input data."""
     data = input.read_bytes()
@@ -31,12 +32,12 @@ def detect(
 
 @app.command
 def recode(
-    input: StdioPath = StdioPath("-"),
-    output: StdioPath = StdioPath("-"),
+    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
+    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
     *,
-    from_: str | None = None,
-    to: str = "utf-8",
-    errors: lx_encoding.RecodeErrors = "strict",
+    from_: Annotated[str | None, Parameter(name=["--from", "-f"])] = None,
+    to: Annotated[str, Parameter(name=["--to", "-t"])] = "utf-8",
+    errors: Annotated[lx_encoding.RecodeErrors, Parameter(name=["--errors", "-e"])] = "strict",
 ) -> None:
     """Re-encode data from one encoding to another."""
     data = input.read_bytes()
@@ -45,10 +46,10 @@ def recode(
 
 @app.command
 def add_bom(
-    input: StdioPath = StdioPath("-"),
-    output: StdioPath = StdioPath("-"),
+    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
+    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
     *,
-    encoding: lx_encoding.BomEncoding = "utf-8",
+    encoding: Annotated[lx_encoding.BomEncoding, Parameter(name=["--encoding", "-e"])] = "utf-8",
 ) -> None:
     """Add a byte-order mark (BOM) to the data."""
     data = input.read_bytes()
@@ -57,8 +58,8 @@ def add_bom(
 
 @app.command
 def strip_bom(
-    input: StdioPath = StdioPath("-"),
-    output: StdioPath = StdioPath("-"),
+    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
+    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
 ) -> None:
     """Remove any leading byte-order mark (BOM) from the data."""
     data = input.read_bytes()
