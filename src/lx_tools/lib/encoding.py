@@ -18,6 +18,8 @@ BomEncoding = Literal[
     "utf-32-le",
 ]
 
+RecodeErrors = Literal["strict", "replace", "ignore"]
+
 
 def detect_encoding(data: bytes, all: bool = False) -> EncodingMatch | list[EncodingMatch] | None:
     """Detect the encoding of byte data.
@@ -34,15 +36,15 @@ def detect_encoding(data: bytes, all: bool = False) -> EncodingMatch | list[Enco
     return EncodingMatch(best.encoding, best.coherence)
 
 
-def recode(data: bytes, from_encoding: str | None, to_encoding: str) -> bytes:
+def recode(data: bytes, from_encoding: str | None, to_encoding: str, *, errors: RecodeErrors = "strict") -> bytes:
     """Re-encode data from one encoding to another."""
     if from_encoding is None:
         detected = detect_encoding(data)
         if detected is None:
             raise ValueError("Could not auto-detect source encoding.")
         from_encoding = detected.encoding
-    text = data.decode(from_encoding, errors="replace")
-    return text.encode(to_encoding, errors="strict")
+    text = data.decode(from_encoding, errors=errors)
+    return text.encode(to_encoding, errors=errors)
 
 
 _BOMS = {

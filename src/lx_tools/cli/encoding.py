@@ -14,6 +14,7 @@ def detect(
     output: StdioPath = StdioPath("-"),
     *,
     all: bool = False,
+    verbose: bool = False,
 ) -> None:
     """Detect the encoding of input data."""
     data = input.read_bytes()
@@ -21,7 +22,10 @@ def detect(
     if not result:
         sys.exit("Could not detect encoding of input data.")
     matches = result if isinstance(result, list) else [result]
-    lines = "\n".join(f"{match.encoding}\t{match.confidence:.4f}" for match in matches)
+    if verbose:
+        lines = "\n".join(f"{match.encoding}\t{match.confidence:.4f}" for match in matches)
+    else:
+        lines = "\n".join(match.encoding for match in matches)
     output.write_text(lines + "\n")
 
 
@@ -32,10 +36,11 @@ def recode(
     *,
     from_: str | None = None,
     to: str = "utf-8",
+    errors: lx_encoding.RecodeErrors = "strict",
 ) -> None:
     """Re-encode data from one encoding to another."""
     data = input.read_bytes()
-    output.write_bytes(lx_encoding.recode(data, from_, to))
+    output.write_bytes(lx_encoding.recode(data, from_, to, errors=errors))
 
 
 @app.command
