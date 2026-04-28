@@ -15,7 +15,19 @@ def check_empty_stdin(input: StdioPath, app: App, commands: list[str]) -> None:
         sys.exit(0)
 
 
-app = App()
+app = App(
+    help="""A Swiss-army knife for data manipulation on the command line.
+
+Supports JSON, JSON Lines, CSV and encoding operations.
+Every command accepts files as positional arguments or via --input/--output,
+and defaults to stdin/stdout for easy piping.
+
+Use --help on any subcommand for detailed usage.
+
+If calling a subcommand with no arguments without piping data,
+prints the command's help and exits with status 0.
+""",
+)
 
 # Import sub-apps after type aliases to avoid circular imports.
 from lx_tools.cli.csv import app as csv_app

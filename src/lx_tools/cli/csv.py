@@ -8,7 +8,18 @@ from cyclopts.types import StdioPath
 from lx_tools.cli import InputType, OutputType, check_empty_stdin
 import lx_tools.lib.csv as lx_csv
 
-app = App(name="csv", help="CSV manipulation utilities.")
+app = App(
+    name="csv",
+    help="""CSV manipulation utilities.
+
+Relies on the standard library csv module for csv I/O.
+
+Unless --encoding is specified, input is assumed to be UTF-8 and output is
+always UTF-8 no matter the input encoding.
+Unless --header is specified, every csv file is treated as not having a header
+except in operations that operates by column name.
+""",
+)
 
 only_one = Group(validator=cyclopts.validators.MutuallyExclusive())
 
@@ -28,8 +39,23 @@ def sort(
 ) -> None:
     """Sort CSV rows by a column in ascending order.
 
-    Specify the column with --name or --index (mutually exclusive).
-    Input is decoded with --encoding; output is always UTF-8.
+    Specify the column with --name (requires --header) or --index.
+    These options are mutually exclusive.
+
+    Example: lx csv sort --header --name Age data.csv
+
+    Options
+    -------
+    --name, -n
+        Column name to sort by (requires --header).
+    --index, -i
+        Zero-based column index to sort by.
+    --encoding, -e
+        Input file encoding (default: utf-8).
+    --header, -H
+        Treat the first row as a header and preserve it.
+    --strict, -s
+        Error if a row is missing the sort column.
     """
     check_empty_stdin(input, app, ["sort"])
     if not name and not index:
@@ -60,8 +86,23 @@ def reverse(
 ) -> None:
     """Sort CSV rows by a column in descending order.
 
-    Specify the column with --name or --index (mutually exclusive).
-    Input is decoded with --encoding; output is always UTF-8.
+    Specify the column with --name (requires --header) or --index.
+    These options are mutually exclusive.
+
+    Example: lx csv reverse --header --name Age data.csv
+
+    Options
+    -------
+    --name, -n
+        Column name to sort by (requires --header).
+    --index, -i
+        Zero-based column index to sort by.
+    --encoding, -e
+        Input file encoding (default: utf-8).
+    --header, -H
+        Treat the first row as a header and preserve it.
+    --strict, -s
+        Error if a row is missing the sort column.
     """
     check_empty_stdin(input, app, ["reverse"])
     if not name and not index:
@@ -90,8 +131,25 @@ def select(
 ) -> None:
     """Output only the specified columns.
 
-    Specify columns with --names (comma-separated) or --indices (comma-separated).
-    Mutually exclusive.
+    Specify columns with --names (comma-separated) or --indices
+    (comma-separated, zero-based). These options are mutually exclusive.
+
+    Missing cells become empty strings unless --strict is used.
+
+    Example: lx csv select --header --names Name,Email data.csv
+
+    Options
+    -------
+    --names, -n
+        Comma-separated column names to keep (requires --header).
+    --indices, -i
+        Comma-separated zero-based column indices to keep.
+    --encoding, -e
+        Input file encoding (default: utf-8).
+    --header, -H
+        Treat the first row as a header and preserve it.
+    --strict, -s
+        Error if a row is missing a requested column.
     """
     check_empty_stdin(input, app, ["select"])
     if not names and not indices:
@@ -119,7 +177,21 @@ def count(
     header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
     encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
 ) -> None:
-    """Count CSV rows."""
+    """Count CSV rows.
+
+    Counts all rows by default.
+    Use --header to exclude the header row
+    from the count.
+
+    Example: lx csv count --header data.csv
+
+    Options
+    -------
+    --header, -H
+        Exclude the first row from the count (treat it as a header).
+    --encoding, -e
+        Input file encoding (default: utf-8).
+    """
     check_empty_stdin(input, app, ["count"])
     try:
         with input.open("r", encoding=encoding) as f:
@@ -138,7 +210,22 @@ def head(
     header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
     encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
 ) -> None:
-    """Output the first N data rows. Preserves header if --header."""
+    """Output the first N data rows.
+
+    Memory-efficient: parses only as many rows as needed.
+    Preserves the header row when --header is used.
+
+    Example: lx csv head -n 5 --header data.csv
+
+    Options
+    -------
+    --lines, -n
+        Number of data rows to output (default: 10).
+    --header, -H
+        Treat the first row as a header and preserve it.
+    --encoding, -e
+        Input file encoding (default: utf-8).
+    """
     check_empty_stdin(input, app, ["head"])
     try:
         with input.open("r", encoding=encoding) as f:
@@ -157,7 +244,24 @@ def tail(
     header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
     encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
 ) -> None:
-    """Output the last N data rows. Preserves header if --header."""
+    """Output the last N data rows.
+
+    Uses a deque and reads the file line-by-line
+    to stay memory-efficient on large files.
+
+    Preserves the header row when --header is used.
+
+    Example: lx csv tail -n 5 --header data.csv
+
+    Options
+    -------
+    --lines, -n
+        Number of data rows to output (default: 10).
+    --header, -H
+        Treat the first row as a header and preserve it.
+    --encoding, -e
+        Input file encoding (default: utf-8).
+    """
     check_empty_stdin(input, app, ["tail"])
     try:
         with input.open("r", encoding=encoding) as f:
@@ -176,7 +280,23 @@ def shuffle(
     header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
     encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
 ) -> None:
-    """Shuffle CSV rows randomly. Preserves header if --header."""
+    """Shuffle CSV rows randomly.
+
+    Preserves the header row when --header is used.
+
+    Use --seed for a reproducible shuffle order.
+
+    Example: lx csv shuffle --seed 42 --header data.csv
+
+    Options
+    -------
+    --seed, -s
+        Random seed for deterministic output.
+    --header, -H
+        Treat the first row as a header and preserve it.
+    --encoding, -e
+        Input file encoding (default: utf-8).
+    """
     check_empty_stdin(input, app, ["shuffle"])
     try:
         text = input.read_text(encoding=encoding)
@@ -196,7 +316,27 @@ def sample(
     header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
     encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
 ) -> None:
-    """Sample N rows without replacement. Preserves header if --header."""
+    """Sample N rows without replacement.
+
+    Preserves the header row when --header is used.
+
+    Use --seed for a reproducible sample.
+
+    Errors if N is larger than the number of data rows available.
+
+    Example: lx csv sample -n 100 --seed 42 --header data.csv
+
+    Options
+    -------
+    --n, -n
+        Number of data rows to sample (default: 10).
+    --seed, -s
+        Random seed for deterministic output.
+    --header, -H
+        Treat the first row as a header and preserve it.
+    --encoding, -e
+        Input file encoding (default: utf-8).
+    """
     check_empty_stdin(input, app, ["sample"])
     try:
         text = input.read_text(encoding=encoding)
@@ -217,10 +357,26 @@ def remove(
     header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
     strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
 ) -> None:
-    """Remove the specified columns, keeping the rest in original order.
+    """Remove specified columns, keeping the rest in original order.
 
-    Specify columns with --names (comma-separated) or --indices (comma-separated).
-    Mutually exclusive.
+    Specify columns with --names (comma-separated, requires --header) or
+    --indices (comma-separated, zero-based).
+    These options are mutually exclusive.
+
+    Example: lx csv remove --header --names Password,InternalID data.csv
+
+    Options
+    -------
+    --names, -n
+        Comma-separated column names to remove (requires --header).
+    --indices, -i
+        Comma-separated zero-based column indices to remove.
+    --encoding, -e
+        Input file encoding (default: utf-8).
+    --header, -H
+        Treat the first row as a header and preserve it.
+    --strict, -s
+        Error if a named column is not found in the header.
     """
     check_empty_stdin(input, app, ["remove"])
     if not names and not indices:
