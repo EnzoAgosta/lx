@@ -141,8 +141,8 @@ def head(
     """Output the first N data rows. Preserves header if --header."""
     check_empty_stdin(input, app, ["head"])
     try:
-        text = input.read_text(encoding=encoding)
-        result = lx_csv.head_csv(text, lines, header=header)
+        with input.open("r", encoding=encoding) as f:
+            result = lx_csv.head_csv(f, lines, header=header)
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))
@@ -160,8 +160,8 @@ def tail(
     """Output the last N data rows. Preserves header if --header."""
     check_empty_stdin(input, app, ["tail"])
     try:
-        text = input.read_text(encoding=encoding)
-        result = lx_csv.tail_csv(text, lines, header=header)
+        with input.open("r", encoding=encoding) as f:
+            result = lx_csv.tail_csv(f, lines, header=header)
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))

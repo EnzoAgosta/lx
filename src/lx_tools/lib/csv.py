@@ -1,6 +1,8 @@
 import csv
+from collections import deque
 import io
 import random
+from typing import TextIO
 
 
 class CSVError(Exception):
@@ -158,22 +160,42 @@ def count_csv(text: str, *, header: bool = False) -> int:
     return len(rows)
 
 
-def head_csv(text: str, n: int, *, header: bool = False) -> str:
-    """Return the first N data rows, preserving header if present."""
-    parsed_header, rows = _parse_csv(text, header=header)
-    result = rows[:n]
+def head_csv(stream: TextIO, n: int, *, header: bool = False) -> str:
+    """Return the first N data rows, preserving header if present.
+    Parses only as many rows as needed from the text stream."""
+    reader = csv.reader(stream)
+    parsed_header = None
+    if header:
+        try:
+            parsed_header = next(reader)
+        except StopIteration:
+            pass
+    result = []
+    for i, row in enumerate(reader):
+        if i >= n:
+            break
+        result.append(row)
     if parsed_header is not None:
         return _write_csv([parsed_header, *result])
     return _write_csv(result)
 
 
-def tail_csv(text: str, n: int, *, header: bool = False) -> str:
-    """Return the last N data rows, preserving header if present."""
-    parsed_header, rows = _parse_csv(text, header=header)
-    result = rows[-n:]
+def tail_csv(stream: TextIO, n: int, *, header: bool = False) -> str:
+    """Return the last N data rows, preserving header if present.
+    Uses a deque to avoid keeping all rows in memory."""
+    reader = csv.reader(stream)
+    parsed_header = None
+    if header:
+        try:
+            parsed_header = next(reader)
+        except StopIteration:
+            pass
+    out = deque(maxlen=n)
+    for row in reader:
+        out.append(row)
     if parsed_header is not None:
-        return _write_csv([parsed_header, *result])
-    return _write_csv(result)
+        return _write_csv([parsed_header, *list(out)])
+    return _write_csv(list(out))
 
 
 def shuffle_csv(text: str, *, header: bool = False, seed: object = None) -> str:
