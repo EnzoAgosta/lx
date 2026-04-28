@@ -1,5 +1,6 @@
 import csv
 import io
+import random
 
 
 class CSVError(Exception):
@@ -148,3 +149,53 @@ def remove_column_by_index(text: str, indices: list[int], *, strict: bool = Fals
         return _write_csv([result_header, *result_rows])
     result_rows = [[row[i] for i in range(len(row)) if i not in drop] for row in rows]
     return _write_csv(result_rows)
+
+
+def count_csv(text: str, *, header: bool = False) -> int:
+    """Count rows in CSV text.
+    Returns data rows only if header=True, else all rows."""
+    _, rows = _parse_csv(text, header=header)
+    return len(rows)
+
+
+def head_csv(text: str, n: int, *, header: bool = False) -> str:
+    """Return the first N data rows, preserving header if present."""
+    parsed_header, rows = _parse_csv(text, header=header)
+    result = rows[:n]
+    if parsed_header is not None:
+        return _write_csv([parsed_header, *result])
+    return _write_csv(result)
+
+
+def tail_csv(text: str, n: int, *, header: bool = False) -> str:
+    """Return the last N data rows, preserving header if present."""
+    parsed_header, rows = _parse_csv(text, header=header)
+    result = rows[-n:]
+    if parsed_header is not None:
+        return _write_csv([parsed_header, *result])
+    return _write_csv(result)
+
+
+def shuffle_csv(text: str, *, header: bool = False, seed: object = None) -> str:
+    """Shuffle CSV rows randomly. Preserves header if present."""
+    parsed_header, rows = _parse_csv(text, header=header)
+    if seed is not None:
+        random.seed(seed)
+    random.shuffle(rows)
+    if parsed_header is not None:
+        return _write_csv([parsed_header, *rows])
+    return _write_csv(rows)
+
+
+def sample_csv(text: str, n: int, *, header: bool = False, seed: object = None) -> str:
+    """Sample N rows without replacement. Preserves header if present."""
+    parsed_header, rows = _parse_csv(text, header=header)
+    if seed is not None:
+        random.seed(seed)
+    try:
+        result = random.sample(rows, k=n)
+    except ValueError:
+        raise CSVError(f"Cannot sample {n} rows from {len(rows)} available.")
+    if parsed_header is not None:
+        return _write_csv([parsed_header, *result])
+    return _write_csv(result)

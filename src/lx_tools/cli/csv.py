@@ -112,6 +112,101 @@ def select(
 
 
 @app.command
+def count(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+) -> None:
+    """Count CSV rows."""
+    check_empty_stdin(input, app, ["count"])
+    try:
+        text = input.read_text(encoding=encoding)
+        result = lx_csv.count_csv(text, header=header)
+        output.write_text(f"{result}\n", encoding="utf-8")
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def head(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    lines: Annotated[int, Parameter(name=["--lines", "-n"], validator=validators.Number(gt=0))] = 10,
+    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+) -> None:
+    """Output the first N data rows. Preserves header if --header."""
+    check_empty_stdin(input, app, ["head"])
+    try:
+        text = input.read_text(encoding=encoding)
+        result = lx_csv.head_csv(text, lines, header=header)
+        output.write_text(result, encoding="utf-8")
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def tail(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    lines: Annotated[int, Parameter(name=["--lines", "-n"], validator=validators.Number(gt=0))] = 10,
+    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+) -> None:
+    """Output the last N data rows. Preserves header if --header."""
+    check_empty_stdin(input, app, ["tail"])
+    try:
+        text = input.read_text(encoding=encoding)
+        result = lx_csv.tail_csv(text, lines, header=header)
+        output.write_text(result, encoding="utf-8")
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def shuffle(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    seed: Annotated[int | float | str, Parameter(name=["--seed", "-s"])] = None,
+    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+) -> None:
+    """Shuffle CSV rows randomly. Preserves header if --header."""
+    check_empty_stdin(input, app, ["shuffle"])
+    try:
+        text = input.read_text(encoding=encoding)
+        result = lx_csv.shuffle_csv(text, header=header, seed=seed)
+        output.write_text(result, encoding="utf-8")
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def sample(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    n: Annotated[int, Parameter(name=["--n", "-n"], validator=validators.Number(gt=0))] = 10,
+    seed: Annotated[int | float | str, Parameter(name=["--seed", "-s"])] = None,
+    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+) -> None:
+    """Sample N rows without replacement. Preserves header if --header."""
+    check_empty_stdin(input, app, ["sample"])
+    try:
+        text = input.read_text(encoding=encoding)
+        result = lx_csv.sample_csv(text, n, header=header, seed=seed)
+        output.write_text(result, encoding="utf-8")
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+
+
+@app.command
 def remove(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),

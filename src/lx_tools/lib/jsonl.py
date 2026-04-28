@@ -48,3 +48,26 @@ def pluck_field(line: bytes, key: str) -> object:
     if isinstance(data, dict) and key in data:
         return data[key]
     return None
+
+
+def sort_jsonl(lines: list[bytes], key: str, *, reverse: bool = False, strict: bool = False) -> list[bytes]:
+    """Sort JSON Lines by a top-level key.
+
+    Missing keys sort as None (null). With strict=True, raises if any line
+    is missing the key.
+    """
+    entries = []
+    for line in lines:
+        data = parse_line(line)
+        if data is None:
+            continue
+        if not isinstance(data, dict):
+            raise JSONLError(f"JSONL line is not an object: {line!r}")
+        if key not in data:
+            if strict:
+                raise JSONLError(f"Missing key {key!r} in JSONL line: {line!r}")
+        value = data.get(key)
+        entries.append((orjson.dumps(value), line))
+
+    entries.sort(key=lambda x: x[0], reverse=reverse)
+    return [line for _, line in entries]

@@ -33,6 +33,25 @@ def detect(
 
 
 @app.command
+def check(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    expected: Annotated[str, Parameter(name=["--expected", "-e"])],
+) -> None:
+    """Detect encoding and verify it matches the expected one.
+    If valid, passes the input data through unchanged for chaining.
+    """
+    check_empty_stdin(input, app, ["check"])
+    data = input.read_bytes()
+    try:
+        lx_encoding.check_encoding(data, expected)
+    except ValueError as e:
+        sys.exit(str(e))
+    output.write_bytes(data)
+
+
+@app.command
 def recode(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),

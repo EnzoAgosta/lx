@@ -89,6 +89,44 @@ def validate(
 
 
 @app.command
+def sort(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    key: Annotated[str, Parameter(name=["--key", "-k"])],
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+) -> None:
+    """Sort JSON Lines by a top-level key in ascending order."""
+    check_empty_stdin(input, app, ["sort"])
+    with input.open("rb") as f:
+        lines = f.readlines()
+    try:
+        result = lx_jsonl.sort_jsonl(lines, key, strict=strict)
+    except lx_jsonl.JSONLError as e:
+        sys.exit(str(e))
+    output.write_bytes(b"".join(result))
+
+
+@app.command
+def reverse(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    key: Annotated[str, Parameter(name=["--key", "-k"])],
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+) -> None:
+    """Sort JSON Lines by a top-level key in descending order."""
+    check_empty_stdin(input, app, ["reverse"])
+    with input.open("rb") as f:
+        lines = f.readlines()
+    try:
+        result = lx_jsonl.sort_jsonl(lines, key, reverse=True, strict=strict)
+    except lx_jsonl.JSONLError as e:
+        sys.exit(str(e))
+    output.write_bytes(b"".join(result))
+
+
+@app.command
 def pluck(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),

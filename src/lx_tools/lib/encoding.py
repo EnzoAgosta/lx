@@ -36,6 +36,25 @@ def detect_encoding(data: bytes, all: bool = False) -> EncodingMatch | list[Enco
     return EncodingMatch(best.encoding, best.coherence)
 
 
+def check_encoding(data: bytes, expected: str) -> str:
+    """Detect encoding and verify it matches *expected*.
+
+    Returns the detected encoding name on match.
+    Raises ValueError on mismatch or failed detection.
+    """
+    detected = detect_encoding(data)
+    if detected is None:
+        raise ValueError("Could not detect encoding.")
+    expected_norm = codecs.lookup(expected).name
+    detected_norm = codecs.lookup(detected.encoding).name
+    if expected_norm == detected_norm:
+        return detected.encoding
+    # ASCII is a valid subset of UTF-8
+    if expected_norm == "utf-8" and detected_norm == "ascii":
+        return detected.encoding
+    raise ValueError(f"Expected {expected_norm}, detected {detected_norm}")
+
+
 def recode(data: bytes, from_encoding: str | None, to_encoding: str, *, errors: RecodeErrors = "strict") -> bytes:
     """Re-encode data from one encoding to another."""
     if from_encoding is None:
