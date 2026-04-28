@@ -6,7 +6,7 @@ from cyclopts import App, Parameter, validators
 from cyclopts.types import StdioPath
 import orjson
 
-from lx_tools.cli import InputType, OutputType
+from lx_tools.cli import InputType, OutputType, check_empty_stdin
 import lx_tools.lib.jsonl as lx_jsonl
 
 app = App(name="jsonl", help="JSON Lines utilities. Assumes valid UTF-8 per RFC 8259.")
@@ -18,6 +18,7 @@ def count(
     output: OutputType = StdioPath("-"),
 ) -> None:
     """Count non-empty and valid lines."""
+    check_empty_stdin(input, app, ["count"])
     try:
         with input.open("rb") as f:
             n = sum(1 for line in f if lx_jsonl.parse_line(line) is not None)
@@ -35,6 +36,7 @@ def head(
     raw: Annotated[bool, Parameter(name=["--raw-lines", "-r"])] = False,
 ) -> None:
     """Output the first N non-empty lines."""
+    check_empty_stdin(input, app, ["head"])
     with input.open("rb") as f:
         head_lines = lx_jsonl.get_first_n_lines(f, lines)
     if not raw:
@@ -55,6 +57,7 @@ def tail(
     raw: Annotated[bool, Parameter(name=["--raw-lines", "-r"])] = False,
 ) -> None:
     """Output the last N non-empty lines."""
+    check_empty_stdin(input, app, ["tail"])
     with input.open("rb") as f:
         tail_lines = lx_jsonl.get_last_n_lines(f, lines)
     if not raw:
@@ -73,6 +76,7 @@ def validate(
 ) -> None:
     """Validate that every non-empty line is valid JSON.
     If valid, returns the input data as-is for chaining."""
+    check_empty_stdin(input, app, ["validate"])
     lines = []
     with input.open("rb") as f:
         for line in f:
@@ -92,6 +96,7 @@ def pluck(
     key: Annotated[str, Parameter(name=["--key", "-k"])],
 ) -> None:
     """Extract a top-level field from each non-empty JSONL object line."""
+    check_empty_stdin(input, app, ["pluck"])
     with input.open("rb") as f:
         try:
             result = [lx_jsonl.pluck_field(line, key) for line in f]
@@ -106,6 +111,7 @@ def to_json(
     output: OutputType = StdioPath("-"),
 ) -> None:
     """Convert JSON Lines to a JSON array."""
+    check_empty_stdin(input, app, ["to_json"])
     with input.open("rb") as f:
         try:
             result = [lx_jsonl.parse_line(line) for line in f]
@@ -123,6 +129,7 @@ def shuffle(
     raw: Annotated[bool, Parameter(name=["--raw-lines", "-r"])] = False,
 ) -> None:
     """Shuffle JSON Lines as-is."""
+    check_empty_stdin(input, app, ["shuffle"])
     with input.open("rb") as f:
         lines = f.readlines()
     if not raw:
@@ -147,6 +154,7 @@ def sample(
     raw: Annotated[bool, Parameter(name=["--raw-lines", "-r"])] = False,
 ) -> None:
     """Sample N lines from JSON Lines without replacement."""
+    check_empty_stdin(input, app, ["sample"])
     with input.open("rb") as f:
         lines = f.readlines()
     if not raw:

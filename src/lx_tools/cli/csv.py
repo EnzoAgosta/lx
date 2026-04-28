@@ -5,7 +5,7 @@ import cyclopts
 from cyclopts import App, Group, Parameter, validators
 from cyclopts.types import StdioPath
 
-from lx_tools.cli import InputType, OutputType
+from lx_tools.cli import InputType, OutputType, check_empty_stdin
 import lx_tools.lib.csv as lx_csv
 
 app = App(name="csv", help="CSV manipulation utilities.")
@@ -31,6 +31,7 @@ def sort(
     Specify the column with --name or --index (mutually exclusive).
     Input is decoded with --encoding; output is always UTF-8.
     """
+    check_empty_stdin(input, app, ["sort"])
     if not name and not index:
         sys.exit("Must specify --name or --index.")
     try:
@@ -62,6 +63,7 @@ def reverse(
     Specify the column with --name or --index (mutually exclusive).
     Input is decoded with --encoding; output is always UTF-8.
     """
+    check_empty_stdin(input, app, ["reverse"])
     if not name and not index:
         sys.exit("Must specify --name or --index.")
     try:
@@ -91,6 +93,7 @@ def select(
     Specify columns with --names (comma-separated) or --indices (comma-separated).
     Mutually exclusive.
     """
+    check_empty_stdin(input, app, ["select"])
     if not names and not indices:
         sys.exit("Must specify --names or --indices.")
     try:
@@ -124,6 +127,7 @@ def remove(
     Specify columns with --names (comma-separated) or --indices (comma-separated).
     Mutually exclusive.
     """
+    check_empty_stdin(input, app, ["remove"])
     if not names and not indices:
         sys.exit("Must specify --names or --indices.")
     try:

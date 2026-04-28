@@ -1,3 +1,4 @@
+import sys
 from typing import Annotated
 
 from cyclopts import App, Parameter, validators
@@ -5,6 +6,14 @@ from cyclopts.types import StdioPath
 
 type InputType = Annotated[StdioPath, Parameter(name="--input", validator=validators.Path(exists=True, dir_okay=False))]
 type OutputType = Annotated[StdioPath, Parameter(name="--output", validator=validators.Path(dir_okay=False))]
+
+
+def check_empty_stdin(input: StdioPath, app: App, commands: list[str]) -> None:
+    """If input is stdin and the terminal has no piped data, print help and exit."""
+    if input.is_stdio and sys.stdin.isatty():
+        app.help_print(commands)
+        sys.exit(0)
+
 
 app = App()
 

@@ -4,7 +4,7 @@ from typing import Annotated
 from cyclopts import App, Parameter
 from cyclopts.types import StdioPath
 
-from lx_tools.cli import InputType, OutputType
+from lx_tools.cli import InputType, OutputType, check_empty_stdin
 import lx_tools.lib.json as lx_json
 
 app = App(name="json", help="JSON utilities. Assumes valid UTF-8 per RFC 8259.")
@@ -16,6 +16,7 @@ def sort(
     output: OutputType = StdioPath("-"),
 ) -> None:
     """Sort all JSON keys recursively."""
+    check_empty_stdin(input, app, ["sort"])
     try:
         output.write_bytes(lx_json.sort_json(input.read_bytes()))
     except lx_json.JSONError as e:
@@ -30,6 +31,7 @@ def pretty(
     sort_keys: Annotated[bool, Parameter(name=["--sort-keys", "-s"])] = False,
 ) -> None:
     """Pretty-print JSON with 2-space indentation."""
+    check_empty_stdin(input, app, ["pretty"])
     try:
         output.write_bytes(lx_json.pretty_json(input.read_bytes(), sort_keys=sort_keys))
     except lx_json.JSONError as e:
@@ -44,6 +46,7 @@ def minify(
     sort_keys: Annotated[bool, Parameter(name=["--sort-keys", "-s"])] = False,
 ) -> None:
     """Minify JSON by removing unnecessary whitespace."""
+    check_empty_stdin(input, app, ["minify"])
     try:
         output.write_bytes(lx_json.minify_json(input.read_bytes(), sort_keys=sort_keys))
     except lx_json.JSONError as e:
@@ -56,6 +59,7 @@ def validate(
     output: OutputType = StdioPath("-"),
 ) -> None:
     """Validate JSON syntax. Outputs the input data as-is for chaining."""
+    check_empty_stdin(input, app, ["validate"])
     try:
         output.write_bytes(lx_json.validate_json(input.read_bytes()))
     except lx_json.JSONError as e:
@@ -72,6 +76,7 @@ def reverse(
     Sorts keys ascending, then reverses. Only affects the top level;
     nested objects are left untouched. Deterministic but not efficient.
     """
+    check_empty_stdin(input, app, ["reverse"])
     try:
         output.write_bytes(lx_json.reverse_json(input.read_bytes()))
     except lx_json.JSONError as e:
@@ -84,6 +89,7 @@ def to_jsonl(
     output: OutputType = StdioPath("-"),
 ) -> None:
     """Convert a JSON array to JSON Lines."""
+    check_empty_stdin(input, app, ["to_jsonl"])
     try:
         output.write_bytes(lx_json.to_jsonl(input.read_bytes()))
     except lx_json.JSONError as e:
