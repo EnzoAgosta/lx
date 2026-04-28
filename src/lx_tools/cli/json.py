@@ -4,6 +4,7 @@ from typing import Annotated
 from cyclopts import App, Parameter
 from cyclopts.types import StdioPath
 
+from lx_tools.cli import InputType, OutputType
 import lx_tools.lib.json as lx_json
 
 app = App(name="json", help="JSON utilities. Assumes valid UTF-8 per RFC 8259.")
@@ -11,8 +12,8 @@ app = App(name="json", help="JSON utilities. Assumes valid UTF-8 per RFC 8259.")
 
 @app.command
 def sort(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
 ) -> None:
     """Sort all JSON keys recursively."""
     try:
@@ -23,8 +24,8 @@ def sort(
 
 @app.command
 def pretty(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
     *,
     sort_keys: Annotated[bool, Parameter(name=["--sort-keys", "-s"])] = False,
 ) -> None:
@@ -37,8 +38,8 @@ def pretty(
 
 @app.command
 def minify(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
     *,
     sort_keys: Annotated[bool, Parameter(name=["--sort-keys", "-s"])] = False,
 ) -> None:
@@ -51,19 +52,20 @@ def minify(
 
 @app.command
 def validate(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
 ) -> None:
-    """Validate JSON syntax."""
+    """Validate JSON syntax. Outputs the input data as-is for chaining."""
     try:
-        lx_json.validate_json(input.read_bytes())
+        output.write_bytes(lx_json.validate_json(input.read_bytes()))
     except lx_json.JSONError as e:
         sys.exit(str(e))
 
 
 @app.command
 def reverse(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
 ) -> None:
     """Reverse the order of top-level JSON keys.
 
@@ -78,8 +80,8 @@ def reverse(
 
 @app.command
 def to_jsonl(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
 ) -> None:
     """Convert a JSON array to JSON Lines."""
     try:

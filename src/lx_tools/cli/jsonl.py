@@ -6,6 +6,7 @@ from cyclopts import App, Parameter, validators
 from cyclopts.types import StdioPath
 import orjson
 
+from lx_tools.cli import InputType, OutputType
 import lx_tools.lib.jsonl as lx_jsonl
 
 app = App(name="jsonl", help="JSON Lines utilities. Assumes valid UTF-8 per RFC 8259.")
@@ -13,8 +14,8 @@ app = App(name="jsonl", help="JSON Lines utilities. Assumes valid UTF-8 per RFC 
 
 @app.command
 def count(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
 ) -> None:
     """Count non-empty and valid lines."""
     try:
@@ -27,8 +28,8 @@ def count(
 
 @app.command
 def head(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
     *,
     lines: Annotated[int, Parameter(name=["--lines", "-n"], validator=validators.Number(gt=0))] = 10,
     raw: Annotated[bool, Parameter(name=["--raw-lines", "-r"])] = False,
@@ -47,10 +48,10 @@ def head(
 
 @app.command
 def tail(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
     *,
-    lines: Annotated[int, Parameter(name=["--lines", "-n"])] = 10,
+    lines: Annotated[int, Parameter(name=["--lines", "-n"], validator=validators.Number(gt=0))] = 10,
     raw: Annotated[bool, Parameter(name=["--raw-lines", "-r"])] = False,
 ) -> None:
     """Output the last N non-empty lines."""
@@ -67,8 +68,8 @@ def tail(
 
 @app.command
 def validate(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
 ) -> None:
     """Validate that every non-empty line is valid JSON.
     If valid, returns the input data as-is for chaining."""
@@ -85,8 +86,8 @@ def validate(
 
 @app.command
 def pluck(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
     *,
     key: Annotated[str, Parameter(name=["--key", "-k"])],
 ) -> None:
@@ -101,8 +102,8 @@ def pluck(
 
 @app.command
 def to_json(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
 ) -> None:
     """Convert JSON Lines to a JSON array."""
     with input.open("rb") as f:
@@ -115,8 +116,8 @@ def to_json(
 
 @app.command
 def shuffle(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
     *,
     seed: Annotated[int | float | str, Parameter(name=["--seed", "-s"])] = None,
     raw: Annotated[bool, Parameter(name=["--raw-lines", "-r"])] = False,
@@ -138,8 +139,8 @@ def shuffle(
 
 @app.command
 def sample(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
     *,
     n: Annotated[int, Parameter(name=["--n", "-n"], validator=validators.Number(gt=0))] = 10,
     seed: Annotated[int | float | str, Parameter(name=["--seed", "-s"])] = None,

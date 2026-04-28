@@ -2,9 +2,10 @@ import sys
 from typing import Annotated
 
 import cyclopts
-from cyclopts import App, Group, Parameter
+from cyclopts import App, Group, Parameter, validators
 from cyclopts.types import StdioPath
 
+from lx_tools.cli import InputType, OutputType
 import lx_tools.lib.csv as lx_csv
 
 app = App(name="csv", help="CSV manipulation utilities.")
@@ -14,11 +15,13 @@ only_one = Group(validator=cyclopts.validators.MutuallyExclusive())
 
 @app.command
 def sort(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
     *,
     name: Annotated[str | None, Parameter(name=["--name", "-n"], group=only_one)] = None,
-    index: Annotated[int | None, Parameter(name=["--index", "-i"], group=only_one)] = None,
+    index: Annotated[
+        int | None, Parameter(name=["--index", "-i"], group=only_one, validator=validators.Number(gte=0))
+    ] = None,
     desc: Annotated[bool, Parameter(name=["--desc", "-d"])] = False,
     encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
     header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
@@ -44,8 +47,8 @@ def sort(
 
 @app.command
 def select(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
     *,
     names: Annotated[str | None, Parameter(name=["--names", "-n"], group=only_one)] = None,
     indices: Annotated[str | None, Parameter(name=["--indices", "-i"], group=only_one)] = None,
@@ -77,8 +80,8 @@ def select(
 
 @app.command
 def remove(
-    input: Annotated[StdioPath, Parameter(name="--input")] = StdioPath("-"),
-    output: Annotated[StdioPath, Parameter(name="--output")] = StdioPath("-"),
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
     *,
     names: Annotated[str | None, Parameter(name=["--names", "-n"], group=only_one)] = None,
     indices: Annotated[str | None, Parameter(name=["--indices", "-i"], group=only_one)] = None,
