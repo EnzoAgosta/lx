@@ -97,15 +97,15 @@ def select(
     if not names and not indices:
         sys.exit("Must specify --names or --indices.")
     try:
-        text = input.read_text(encoding=encoding)
-        if names is not None:
-            result = lx_csv.select_column_by_name(
-                text, names=[name.strip() for name in names.split(",")], strict=strict
-            )
-        else:
-            result = lx_csv.select_column_by_index(
-                text, indices=[int(i.strip()) for i in indices.split(",")], strict=strict, header=header
-            )
+        with input.open("r", encoding=encoding) as f:
+            if names is not None:
+                result = lx_csv.select_column_by_name(
+                    f, names=[name.strip() for name in names.split(",")], strict=strict
+                )
+            else:
+                result = lx_csv.select_column_by_index(
+                    f, indices=[int(i.strip()) for i in indices.split(",")], strict=strict, header=header
+                )
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))
@@ -122,8 +122,8 @@ def count(
     """Count CSV rows."""
     check_empty_stdin(input, app, ["count"])
     try:
-        text = input.read_text(encoding=encoding)
-        result = lx_csv.count_csv(text, header=header)
+        with input.open("r", encoding=encoding) as f:
+            result = lx_csv.count_csv(f, header=header)
         output.write_text(f"{result}\n", encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))
@@ -226,15 +226,15 @@ def remove(
     if not names and not indices:
         sys.exit("Must specify --names or --indices.")
     try:
-        text = input.read_text(encoding=encoding)
-        if names is not None:
-            result = lx_csv.remove_column_by_name(
-                text, names=[name.strip() for name in names.split(",")], strict=strict
-            )
-        else:
-            result = lx_csv.remove_column_by_index(
-                text, indices=[int(i.strip()) for i in indices.split(",")], strict=strict, header=header
-            )
+        with input.open("r", encoding=encoding) as f:
+            if names is not None:
+                result = lx_csv.remove_column_by_name(
+                    f, names=[name.strip() for name in names.split(",")], strict=strict
+                )
+            else:
+                result = lx_csv.remove_column_by_index(
+                    f, indices=[int(i.strip()) for i in indices.split(",")], strict=strict, header=header
+                )
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))

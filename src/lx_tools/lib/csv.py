@@ -103,61 +103,88 @@ def sort_csv_by_index(text: str, key: int, desc: bool = False, *, strict: bool =
     return _write_csv(rows)
 
 
-def select_column_by_name(text: str, names: list[str], *, strict: bool = False) -> str:
+def select_column_by_name(stream: TextIO, names: list[str], *, strict: bool = False) -> str:
     """Select specific columns from CSV by name, preserving the order given."""
-    parsed_header, rows = _parse_csv(text, header=True)
-    if parsed_header is None:
+    reader = csv.reader(stream)
+    try:
+        parsed_header = next(reader)
+    except StopIteration:
         raise CSVError("Cannot select columns by name without header. Use --header.")
     indices = _get_indices_from_names(names, parsed_header, strict)
-    result_rows = [
-        _get_cells(row, indices, strict=strict, row_idx=row_idx) for row_idx, row in enumerate(rows, start=1)
-    ]
-    return _write_csv([names, *result_rows])
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(_get_cells(parsed_header, indices, strict=strict, row_idx=0))
+    for row_idx, row in enumerate(reader, start=1):
+        writer.writerow(_get_cells(row, indices, strict=strict, row_idx=row_idx))
+    return out.getvalue()
 
 
-def select_column_by_index(text: str, indices: list[int], *, strict: bool = False, header: bool = False) -> str:
+def select_column_by_index(stream: TextIO, indices: list[int], *, strict: bool = False, header: bool = False) -> str:
     """Select specific columns from CSV by index, preserving the order given."""
-    parsed_header, rows = _parse_csv(text, header=header)
-    result_rows = [
-        _get_cells(row, indices, strict=strict, row_idx=row_idx) for row_idx, row in enumerate(rows, start=1)
-    ]
-    if parsed_header is not None:
-        return _write_csv([_get_cells(parsed_header, indices, strict=strict, row_idx=0), *result_rows])
-    return _write_csv(result_rows)
+    reader = csv.reader(stream)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    if header:
+        try:
+            parsed_header = next(reader)
+        except StopIteration:
+            pass
+        else:
+            writer.writerow(_get_cells(parsed_header, indices, strict=strict, row_idx=0))
+    for row_idx, row in enumerate(reader, start=1):
+        writer.writerow(_get_cells(row, indices, strict=strict, row_idx=row_idx))
+    return out.getvalue()
 
 
-def remove_column_by_name(text: str, names: list[str], *, strict: bool = False) -> str:
+def remove_column_by_name(stream: TextIO, names: list[str], *, strict: bool = False) -> str:
     """Remove specific columns from CSV by name, keeping the rest in original order."""
-    header, rows = _parse_csv(text, header=True)
-    if header is None:
+    reader = csv.reader(stream)
+    try:
+        header = next(reader)
+    except StopIteration:
         raise CSVError("Cannot remove columns by name without header. Use --header.")
     drop = {i for i in _get_indices_from_names(names, header, strict) if i < len(header)}
     keep = [i for i in range(len(header)) if i not in drop]
-    result_header = _get_cells(header, keep)
-    result_rows = [_get_cells(row, keep, strict=strict, row_idx=row_idx) for row_idx, row in enumerate(rows, start=1)]
-    return _write_csv([result_header, *result_rows])
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(_get_cells(header, keep))
+    for row_idx, row in enumerate(reader, start=1):
+        writer.writerow(_get_cells(row, keep, strict=strict, row_idx=row_idx))
+    return out.getvalue()
 
 
-def remove_column_by_index(text: str, indices: list[int], *, strict: bool = False, header: bool = False) -> str:
+def remove_column_by_index(stream: TextIO, indices: list[int], *, strict: bool = False, header: bool = False) -> str:
     """Remove specific columns from CSV by index, keeping the rest in original order."""
-    parsed_header, rows = _parse_csv(text, header=header)
+    reader = csv.reader(stream)
     drop = set(indices)
-    if parsed_header is not None:
-        keep = [i for i in range(len(parsed_header)) if i not in drop]
-        result_header = _get_cells(parsed_header, keep)
-        result_rows = [
-            _get_cells(row, keep, strict=strict, row_idx=row_idx) for row_idx, row in enumerate(rows, start=1)
-        ]
-        return _write_csv([result_header, *result_rows])
-    result_rows = [[row[i] for i in range(len(row)) if i not in drop] for row in rows]
-    return _write_csv(result_rows)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    if header:
+        try:
+            parsed_header = next(reader)
+        except StopIteration:
+            pass
+        else:
+            keep = [i for i in range(len(parsed_header)) if i not in drop]
+            writer.writerow(_get_cells(parsed_header, keep))
+            for row_idx, row in enumerate(reader, start=1):
+                writer.writerow(_get_cells(row, keep, strict=strict, row_idx=row_idx))
+            return out.getvalue()
+    for row in reader:
+        writer.writerow([row[i] for i in range(len(row)) if i not in drop])
+    return out.getvalue()
 
 
-def count_csv(text: str, *, header: bool = False) -> int:
+def count_csv(stream: TextIO, *, header: bool = False) -> int:
     """Count rows in CSV text.
     Returns data rows only if header=True, else all rows."""
-    _, rows = _parse_csv(text, header=header)
-    return len(rows)
+    reader = csv.reader(stream)
+    if header:
+        try:
+            next(reader)
+        except StopIteration:
+            pass
+    return sum(1 for _ in reader)
 
 
 def head_csv(stream: TextIO, n: int, *, header: bool = False) -> str:
