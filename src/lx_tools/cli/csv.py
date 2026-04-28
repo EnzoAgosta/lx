@@ -22,12 +22,11 @@ def sort(
     index: Annotated[
         int | None, Parameter(name=["--index", "-i"], group=only_one, validator=validators.Number(gte=0))
     ] = None,
-    desc: Annotated[bool, Parameter(name=["--desc", "-d"])] = False,
     encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
     header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
     strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
 ) -> None:
-    """Sort CSV rows by a column.
+    """Sort CSV rows by a column in ascending order.
 
     Specify the column with --name or --index (mutually exclusive).
     Input is decoded with --encoding; output is always UTF-8.
@@ -37,9 +36,40 @@ def sort(
     try:
         text = input.read_text(encoding=encoding)
         if name is not None:
-            result = lx_csv.sort_csv_by_name(text, name, desc=desc, strict=strict)
+            result = lx_csv.sort_csv_by_name(text, name, desc=False, strict=strict)
         else:
-            result = lx_csv.sort_csv_by_index(text, index, desc=desc, strict=strict, header=header)
+            result = lx_csv.sort_csv_by_index(text, index, desc=False, strict=strict, header=header)
+        output.write_text(result, encoding="utf-8")
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def reverse(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    name: Annotated[str | None, Parameter(name=["--name", "-n"], group=only_one)] = None,
+    index: Annotated[
+        int | None, Parameter(name=["--index", "-i"], group=only_one, validator=validators.Number(gte=0))
+    ] = None,
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+) -> None:
+    """Sort CSV rows by a column in descending order.
+
+    Specify the column with --name or --index (mutually exclusive).
+    Input is decoded with --encoding; output is always UTF-8.
+    """
+    if not name and not index:
+        sys.exit("Must specify --name or --index.")
+    try:
+        text = input.read_text(encoding=encoding)
+        if name is not None:
+            result = lx_csv.sort_csv_by_name(text, name, desc=True, strict=strict)
+        else:
+            result = lx_csv.sort_csv_by_index(text, index, desc=True, strict=strict, header=header)
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))
