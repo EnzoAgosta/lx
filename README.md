@@ -8,16 +8,16 @@ A pipe-friendly Swiss-army knife CLI for data manipulation.
 
 Every command defaults to reading from `stdin` and writing to `stdout`, so `lx` composes naturally with other Unix tools.
 
-> **Status:** Early development (`v0.0.1`). APIs and command names may change.
+> **Status:** Early development (`v0.1.0`). APIs and command names may change.
 
 ---
 
 ## Features
 
-- **JSON** – sort keys, pretty-print, minify, validate, reverse key order, convert to JSON Lines
-- **JSON Lines** – count, head, tail, validate, sort, pluck fields, shuffle, sample, convert to JSON array
-- **CSV** – sort, reverse, select/remove columns, count rows, head, tail, shuffle, sample
-- **Encoding** – detect, check, recode, add/strip BOM
+- **JSON** – pretty-print, minify, validate, sort keys (recursively or by array key), reverse key or array order, convert to JSON Lines
+- **JSON Lines** – count, head, tail, validate, sort and reverse-sort by key, pluck fields, shuffle, sample, convert to a JSON array
+- **CSV** – sort and reverse-sort by column name or index, select or remove columns, count rows, head, tail, shuffle, sample
+- **Encoding** – detect (with confidence scores), check against an expected encoding, recode, add or strip BOM
 
 Built on [**orjson**](https://github.com/ijl/orjson) for fast JSON handling and [**charset-normalizer**](https://github.com/Ousret/charset_normalizer) for encoding detection.
 
@@ -31,7 +31,7 @@ Built on [**orjson**](https://github.com/ijl/orjson) for fast JSON handling and 
 
 ```bash
 uvx lx --help
-uvx lx json pretty --sort-keys data.json
+uvx lx json pretty data.json
 ```
 
 ### Install as a tool
@@ -60,14 +60,29 @@ uv sync
 ### JSON
 
 ```bash
-# Pretty-print with sorted keys
-lx json pretty --sort-keys data.json
+# Pretty-print (2-space indent)
+lx json pretty data.json
 
 # Minify
 lx json minify data.json > data.min.json
 
-# Validate
-lx json validate data.json
+# Validate and pass through unchanged
+lx json validate data.json | lx json pretty
+
+# Sort top-level keys (or array elements)
+lx json sort messy.json
+
+# Sort keys recursively in every nested object
+lx json sort --recurse messy.json
+
+# Sort an array of objects by a top-level key
+lx json sort --key age users.json
+
+# Reverse top-level keys or array order
+lx json reverse '{"a":1,"b":2,"c":3}'
+
+# Reverse-sort an array of objects by key
+lx json reverse --key age users.json
 
 # Convert a JSON array to JSON Lines
 cat array.json | lx json to-jsonl
@@ -79,18 +94,30 @@ cat array.json | lx json to-jsonl
 # Count valid, non-empty lines
 lx jsonl count data.jsonl
 
-# First/last N lines
-lx jsonl head 10 data.jsonl
-lx jsonl tail 5 data.jsonl
+# First/last N lines (defaults to 10)
+lx jsonl head -n 5 data.jsonl
+lx jsonl tail -n 20 data.jsonl
+
+# Validate every non-empty line
+lx jsonl validate data.jsonl | lx jsonl sort --key name
 
 # Sort lines by a top-level key
 lx jsonl sort --key timestamp data.jsonl
 
+# Reverse-sort by key (missing keys sort last)
+lx jsonl reverse --key timestamp data.jsonl
+
 # Extract a field from each object
-lx jsonl pluck user_id data.jsonl
+lx jsonl pluck --key user_id data.jsonl
 
 # Convert JSON Lines to a JSON array
 lx jsonl to-json data.jsonl
+
+# Shuffle randomly (use --seed for reproducibility)
+lx jsonl shuffle --seed 42 data.jsonl
+
+# Sample N lines without replacement
+lx jsonl sample -n 100 --seed 42 data.jsonl
 ```
 
 ### CSV
@@ -99,14 +126,31 @@ lx jsonl to-json data.jsonl
 # Sort by column name (requires --header)
 lx csv sort --header --name Age data.csv
 
-# Keep only specific columns
-lx csv select --header --name Name --name Email data.csv
+# Sort by zero-based column index
+lx csv sort --index 2 data.csv
 
-# Drop columns
-lx csv remove --header --name InternalID data.csv
+# Reverse-sort by column name
+lx csv reverse --header --name Age data.csv
 
-# Random sample of 100 rows
-lx csv sample --header 100 data.csv
+# Keep only specific columns (first row treated as header)
+lx csv select --names Name,Email data.csv
+
+# Keep columns by index
+lx csv select --indices 0,2,4 data.csv
+
+# Drop columns by name
+lx csv remove --names Password,InternalID data.csv
+
+# Count rows (--header excludes the first row)
+lx csv count --header data.csv
+
+# First/last N data rows (preserves header)
+lx csv head -n 5 --header data.csv
+lx csv tail -n 5 --header data.csv
+
+# Shuffle or sample rows (preserves header)
+lx csv shuffle --seed 42 --header data.csv
+lx csv sample -n 100 --seed 42 --header data.csv
 ```
 
 ### Encoding
@@ -115,28 +159,55 @@ lx csv sample --header 100 data.csv
 # Detect encoding
 lx encoding detect file.txt
 
+# See all candidates with confidence scores
+lx encoding detect --all --long file.txt
+
+# Check against an expected encoding (passes through on match)
+lx encoding check --expected utf-8 file.txt
+
 # Recode from one encoding to another
 lx encoding recode --from latin1 --to utf-8 file.txt
+
+# Add a BOM (strips any existing BOM first)
+lx encoding add-bom --encoding utf-16-le file.txt
 
 # Strip BOM
 lx encoding strip-bom file.txt
 ```
 
+### Flags you will reach for often
+
+- `--strict` – on `sort`, `reverse`, and `pluck` commands: raise an error instead of silently skipping rows or objects that lack the requested key.
+- `--seed` – on `shuffle` and `sample` commands: make random output reproducible.
+- `--raw-lines` – on `jsonl head`, `tail`, `shuffle`, and `sample`: skip JSON validation and treat the input as plain text lines.
+- `--recurse` – on `json sort`: sort keys recursively inside nested objects.
+- `--header` – on CSV commands: treat the first row as a header and preserve it through the operation.
+
 ### Piping examples
 
 ```bash
+# Stable diff between two JSON files
+lx json sort --recurse a.json > a.sorted.json
+lx json sort --recurse b.json > b.sorted.json
+diff a.sorted.json b.sorted.json
+
 # Chain multiple operations
 curl -s https://api.example.com/data.json \
   | lx jsonl to-json \
-  | lx json pretty --sort-keys \
-  | lx encoding add-bom \
+  | lx json sort --key id \
+  | lx json pretty \
+  | lx encoding add-bom --encoding utf-8 \
   > sorted.json
 
 # Sample CSV, then select columns
-cat huge.csv | lx csv sample --header 1000 - | lx csv select --header --name colA --name colB -
+lx csv sample huge.csv --header -n 1000 - | lx csv select --names colA,colB --output subset.csv
 
 # Query YAML with yq, then format with lx
-cat config.yml | yq '.services.web' | lx json pretty
+cat config.yml | yq '.services.web' | lx json pretty --output config.web.json
+
+# Detect and recode in one shot
+lx encoding detect --all --long legacy.txt
+lx encoding recode --from windows-1252 --to utf-8 legacy.txt legacy.utf8.txt
 ```
 
 ---
@@ -145,7 +216,7 @@ cat config.yml | yq '.services.web' | lx json pretty
 
 The project separates **CLI concerns** from **reusable library logic**:
 
-```
+```text
 src/lx_tools/
 ├── cli/        # cyclopts-based command-line interface
 │   ├── csv.py
