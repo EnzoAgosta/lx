@@ -16,8 +16,6 @@ Relies on the standard library csv module for csv I/O.
 
 Unless --encoding is specified, input is assumed to be UTF-8 and output is
 always UTF-8 no matter the input encoding.
-Unless --header is specified, every csv file is treated as not having a header
-except in operations that operates by column name.
 """,
 )
 
@@ -61,11 +59,11 @@ def sort(
     if not name and not index:
         sys.exit("Must specify --name or --index.")
     try:
-        text = input.read_text(encoding=encoding)
-        if name is not None:
-            result = lx_csv.sort_csv_by_name(text, name, desc=False, strict=strict)
-        else:
-            result = lx_csv.sort_csv_by_index(text, index, desc=False, strict=strict, header=header)
+        with input.open("r", encoding=encoding) as f:
+            if name is not None:
+                result = lx_csv.sort_csv_by_name(f, name, desc=False, strict=strict)
+            else:
+                result = lx_csv.sort_csv_by_index(f, index, desc=False, strict=strict, header=header)
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))
@@ -108,11 +106,11 @@ def reverse(
     if not name and not index:
         sys.exit("Must specify --name or --index.")
     try:
-        text = input.read_text(encoding=encoding)
-        if name is not None:
-            result = lx_csv.sort_csv_by_name(text, name, desc=True, strict=strict)
-        else:
-            result = lx_csv.sort_csv_by_index(text, index, desc=True, strict=strict, header=header)
+        with input.open("r", encoding=encoding) as f:
+            if name is not None:
+                result = lx_csv.sort_csv_by_name(f, name, desc=True, strict=strict)
+            else:
+                result = lx_csv.sort_csv_by_index(f, index, desc=True, strict=strict, header=header)
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))
@@ -126,7 +124,6 @@ def select(
     names: Annotated[str | None, Parameter(name=["--names", "-n"], group=only_one)] = None,
     indices: Annotated[str | None, Parameter(name=["--indices", "-i"], group=only_one)] = None,
     encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
-    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
     strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
 ) -> None:
     """Output only the specified columns.
@@ -134,20 +131,19 @@ def select(
     Specify columns with --names (comma-separated) or --indices
     (comma-separated, zero-based). These options are mutually exclusive.
 
+    When using --names, the first row is treated as a header.
     Missing cells become empty strings unless --strict is used.
 
-    Example: lx csv select --header --names Name,Email data.csv
+    Example: lx csv select --names Name,Email data.csv
 
     Options
     -------
     --names, -n
-        Comma-separated column names to keep (requires --header).
+        Comma-separated column names to keep.
     --indices, -i
         Comma-separated zero-based column indices to keep.
     --encoding, -e
         Input file encoding (default: utf-8).
-    --header, -H
-        Treat the first row as a header and preserve it.
     --strict, -s
         Error if a row is missing a requested column.
     """
@@ -162,7 +158,7 @@ def select(
                 )
             else:
                 result = lx_csv.select_column_by_index(
-                    f, indices=[int(i.strip()) for i in indices.split(",")], strict=strict, header=header
+                    f, indices=[int(i.strip()) for i in indices.split(",")], strict=strict
                 )
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
@@ -299,8 +295,8 @@ def shuffle(
     """
     check_empty_stdin(input, app, ["shuffle"])
     try:
-        text = input.read_text(encoding=encoding)
-        result = lx_csv.shuffle_csv(text, header=header, seed=seed)
+        with input.open("r", encoding=encoding) as f:
+            result = lx_csv.shuffle_csv(f, header=header, seed=seed)
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))
@@ -339,8 +335,8 @@ def sample(
     """
     check_empty_stdin(input, app, ["sample"])
     try:
-        text = input.read_text(encoding=encoding)
-        result = lx_csv.sample_csv(text, n, header=header, seed=seed)
+        with input.open("r", encoding=encoding) as f:
+            result = lx_csv.sample_csv(f, n, header=header, seed=seed)
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))
@@ -354,27 +350,26 @@ def remove(
     names: Annotated[str | None, Parameter(name=["--names", "-n"], group=only_one)] = None,
     indices: Annotated[str | None, Parameter(name=["--indices", "-i"], group=only_one)] = None,
     encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
-    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
     strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
 ) -> None:
     """Remove specified columns, keeping the rest in original order.
 
-    Specify columns with --names (comma-separated, requires --header) or
+    Specify columns with --names (comma-separated) or
     --indices (comma-separated, zero-based).
     These options are mutually exclusive.
 
-    Example: lx csv remove --header --names Password,InternalID data.csv
+    When using --names, the first row is treated as a header.
+
+    Example: lx csv remove --names Password,InternalID data.csv
 
     Options
     -------
     --names, -n
-        Comma-separated column names to remove (requires --header).
+        Comma-separated column names to remove.
     --indices, -i
         Comma-separated zero-based column indices to remove.
     --encoding, -e
         Input file encoding (default: utf-8).
-    --header, -H
-        Treat the first row as a header and preserve it.
     --strict, -s
         Error if a named column is not found in the header.
     """
@@ -389,7 +384,7 @@ def remove(
                 )
             else:
                 result = lx_csv.remove_column_by_index(
-                    f, indices=[int(i.strip()) for i in indices.split(",")], strict=strict, header=header
+                    f, indices=[int(i.strip()) for i in indices.split(",")], strict=strict
                 )
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
