@@ -309,6 +309,9 @@ def sample(
 ) -> None:
     """Sample N lines from JSON Lines without replacement.
 
+    Uses reservoir sampling so memory usage stays O(N)
+    regardless of file size.
+
     By default each line is validated as JSON.
     You can use --raw-lines to skip validation
     and treat the input as plain text lines
@@ -331,17 +334,15 @@ def sample(
         Skip JSON validation.
     """
     check_empty_stdin(input, app, ["sample"])
-    with input.open("rb") as f:
-        lines = f.readlines()
+    try:
+        with input.open("rb") as f:
+            result = lx_jsonl.sample_jsonl(f, k=n, seed=seed)
+    except lx_jsonl.JSONLError as e:
+        sys.exit(str(e))
     if not raw:
-        for line in lines:
+        for line in result:
             try:
                 lx_jsonl.parse_line(line)
             except lx_jsonl.JSONLError as e:
                 sys.exit(str(e))
-    rng = random.Random(seed)
-    try:
-        result = rng.sample(lines, k=n)
-    except ValueError:
-        sys.exit(f"Cannot sample {n} lines from {len(lines)} available.")
     output.write_bytes(b"".join(result))

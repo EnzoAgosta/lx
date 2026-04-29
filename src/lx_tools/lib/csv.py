@@ -218,13 +218,26 @@ def shuffle_csv(
 def sample_csv(
     stream: TextIO, n: int, *, header: bool = False, seed: int | float | str | bytes | bytearray | None = None
 ) -> str:
-    """Sample N rows without replacement. Preserves header if present."""
+    """Sample N rows without replacement using reservoir sampling.
+
+    Memory usage is O(n) regardless of file size.
+    Preserves header if present.
+    """
     reader = csv.reader(stream)
     rng = random.Random(seed)
     parsed_header = safe_get_next_row(reader) if header else None
-    rows = list(reader)
-    try:
-        result = rng.sample(rows, k=n)
-    except ValueError:
-        raise CSVError(f"Cannot sample {n} rows from {len(rows)} available.")
-    return _format_csv(parsed_header, *result) if parsed_header is not None else _format_csv(*result)
+
+    reservoir: list[list[str]] = []
+    total = 0
+    for row in reader:
+        if total < n:
+            reservoir.append(row)
+        else:
+            j = rng.randint(0, total)
+            if j < n:
+                reservoir[j] = row
+        total += 1
+
+    if total < n:
+        raise CSVError(f"Cannot sample {n} rows from {total} available.")
+    return _format_csv(parsed_header, *reservoir) if parsed_header is not None else _format_csv(*reservoir)

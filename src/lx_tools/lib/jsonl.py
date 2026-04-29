@@ -1,5 +1,6 @@
 from collections import deque
 from collections.abc import Iterable
+import random
 from typing import Sequence
 
 import orjson
@@ -49,6 +50,36 @@ def pluck_field(line: bytes, key: str) -> object:
     if isinstance(data, dict) and key in data:
         return data[key]
     return None
+
+
+def sample_jsonl(
+    stream: Iterable[bytes],
+    k: int,
+    *,
+    seed: int | float | str | bytes | bytearray | None = None,
+) -> list[bytes]:
+    """Sample k lines from a JSONL stream using reservoir sampling.
+
+    Memory usage is O(k) regardless of stream length.
+    Raises if fewer than k lines are available.
+    """
+    rng = random.Random(seed)
+    reservoir: list[bytes] = []
+    total = 0
+
+    for line in stream:
+        if total < k:
+            reservoir.append(line)
+        else:
+            j = rng.randint(0, total)
+            if j < k:
+                reservoir[j] = line
+        total += 1
+
+    if total < k:
+        raise JSONLError(f"Cannot sample {k} lines from {total} available.")
+
+    return reservoir
 
 
 def sort_jsonl(lines: list[bytes], sort_key: str, *, reverse: bool = False, strict: bool = False) -> list[bytes]:
