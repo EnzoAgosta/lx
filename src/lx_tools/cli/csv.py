@@ -56,6 +56,8 @@ def sort(
         Error if a row is missing the sort column.
     """
     check_empty_stdin(input, app, ["sort"])
+    if name is None and index is None:
+        sys.exit("Must specify --name or --index.")
     try:
         with input.open("r", encoding=encoding) as f:
             if name is not None:
@@ -101,7 +103,7 @@ def reverse(
         Error if a row is missing the sort column.
     """
     check_empty_stdin(input, app, ["reverse"])
-    if not name and not index:
+    if name is None and index is None:
         sys.exit("Must specify --name or --index.")
     try:
         with input.open("r", encoding=encoding) as f:

@@ -13,9 +13,29 @@ def _loads(data: bytes) -> object:
         raise JSONError(f"Invalid JSON: {e}") from e
 
 
-def sort_json(data: bytes) -> bytes:
-    """Sort all JSON keys recursively."""
-    return orjson.dumps(_loads(data), option=orjson.OPT_SORT_KEYS)
+def sort_json(data: bytes, *, recurse: bool = False) -> bytes:
+    """Sort JSON keys.
+
+    By default only top-level keys are sorted.
+    Use recurse=True to sort keys recursively in every nested object.
+    """
+    obj = _loads(data)
+    match obj:
+        case str() | int() | float() | bool() | None:
+            raise JSONError("Input must be a JSON object or array.")
+        case dict():
+            if recurse:
+                return orjson.dumps(obj, option=orjson.OPT_SORT_KEYS)
+            return orjson.dumps({k: obj[k] for k in sorted(obj)})
+        case list():
+            if recurse:
+                return orjson.dumps(obj, option=orjson.OPT_SORT_KEYS)
+            try:
+                return orjson.dumps(sorted(obj))
+            except TypeError as e:
+                raise JSONError(f"Cannot sort array with mixed types: {e}") from e
+        case _:
+            raise RuntimeError(f"Unexpected type: {type(obj)}")
 
 
 def pretty_json(data: bytes, *, sort_keys: bool = False) -> bytes:
@@ -36,18 +56,20 @@ def validate_json(data: bytes) -> None:
 
 
 def reverse_json(data: bytes) -> bytes:
-    """Sort top-level JSON keys ascending, then reverse their order.
+    """Reverse the order of top-level JSON keys or array elements.
 
-    Note: Only top-level keys are affected. This is a convenience command;
-    it parses, sorts, reverses, and re-serializes, which is deterministic
-    but not efficient.
+    Only affects the top-level container. Nested objects are left untouched.
     """
     obj = _loads(data)
-    sorted_bytes = orjson.dumps(obj, option=orjson.OPT_SORT_KEYS)
-    sorted_obj = _loads(sorted_bytes)
-    # Can't really properly type this, so we have to ignore the next line
-    reversed_obj = {k: sorted_obj[k] for k in reversed(sorted_obj)}  # type: ignore
-    return orjson.dumps(reversed_obj)
+    match obj:
+        case str() | int() | float() | bool() | None:
+            raise JSONError("Input must be a JSON object or array.")
+        case dict():
+            return orjson.dumps({k: obj[k] for k in reversed(sorted(obj))})
+        case list():
+            return orjson.dumps(list(reversed(obj)))
+        case _:
+            raise RuntimeError(f"Unexpected type: {type(obj)}")
 
 
 def to_jsonl(data: bytes) -> bytes:

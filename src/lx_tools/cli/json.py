@@ -20,20 +20,29 @@ app = App(
 def sort(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
+    *,
+    recurse: Annotated[bool, Parameter(name=["--recurse", "-r"])] = False,
 ) -> None:
-    """Sort all JSON keys recursively.
+    """Sort JSON keys or array elements.
 
-    Walks the entire document and sorts keys
-    in every object, including objects nested
-    inside arrays.
-    Arrays themselves are left in order.
+    By default sorts top-level object keys or array elements.
+    Use --recurse to sort keys recursively in every nested object.
+
+    Arrays themselves are left in order when using --recurse.
     Useful for getting stable diffs between JSON files.
 
     Example: lx json sort messy.json
+    Example: lx json sort --recurse messy.json
+    Example: lx json sort '[3,1,2]'
+
+    Options
+    -------
+    --recurse, -r
+        Sort keys recursively in all nested objects.
     """
     check_empty_stdin(input, app, ["sort"])
     try:
-        output.write_bytes(lx_json.sort_json(input.read_bytes()))
+        output.write_bytes(lx_json.sort_json(input.read_bytes(), recurse=recurse))
     except lx_json.JSONError as e:
         sys.exit(str(e))
 
@@ -121,20 +130,14 @@ def reverse(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
 ) -> None:
-    """Reverse the order of top-level JSON keys.
+    """Reverse the order of top-level JSON keys or array elements.
 
-    Sorts keys ascending, then reverses them.
-    Only affects the top-level object,
+    Sorts object keys ascending, then reverses them.
+    Only affects the top-level container;
     nested objects are left untouched.
 
-    Deterministic but not the
-    most efficient for huge objects.
-
-    Unless you're dealing with huge files, the
-    performance difference is negligible thanks
-    to the initial sorting being done in rust and not python.
-
     Example: lx json reverse '{"a":1,"b":2,"c":3}'
+    Example: lx json reverse '[3,1,2]'
     """
     check_empty_stdin(input, app, ["reverse"])
     try:
