@@ -1,7 +1,8 @@
 import sys
 from typing import Annotated
 
-from cyclopts import App, Parameter
+import cyclopts
+from cyclopts import App, Group, Parameter
 from cyclopts.types import StdioPath
 
 from lx_tools.cli import InputType, OutputType, check_empty_stdin
@@ -15,18 +16,23 @@ app = App(
 """,
 )
 
+sort_options = Group(validator=cyclopts.validators.MutuallyExclusive())
+
 
 @app.command
 def sort(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
     *,
-    recurse: Annotated[bool, Parameter(name=["--recurse", "-r"])] = False,
+    recurse: Annotated[bool, Parameter(name=["--recurse", "-r"], group=sort_options)] = False,
+    key: Annotated[str | None, Parameter(name=["--key", "-k"], group=sort_options)] = None,
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
 ) -> None:
     """Sort JSON keys or array elements.
 
     By default sorts top-level object keys or array elements.
     Use --recurse to sort keys recursively in every nested object.
+    Use --key to sort an array of objects by a top-level key.
 
     Arrays themselves are left in order when using --recurse.
     Useful for getting stable diffs between JSON files.
@@ -34,15 +40,21 @@ def sort(
     Example: lx json sort messy.json
     Example: lx json sort --recurse messy.json
     Example: lx json sort '[3,1,2]'
+    Example: lx json sort --key age users.json
 
     Options
     -------
     --recurse, -r
         Sort keys recursively in all nested objects.
+    --key, -k
+        Sort array of objects by this top-level key.
+        Mutually exclusive with --recurse.
+    --strict, -s
+        Error if any object is missing the key (only with --key).
     """
     check_empty_stdin(input, app, ["sort"])
     try:
-        output.write_bytes(lx_json.sort_json(input.read_bytes(), recurse=recurse))
+        output.write_bytes(lx_json.sort_json(input.read_bytes(), recurse=recurse, key=key, strict=strict))
     except lx_json.JSONError as e:
         sys.exit(str(e))
 
@@ -129,19 +141,35 @@ def validate(
 def reverse(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
+    *,
+    key: Annotated[str | None, Parameter(name=["--key", "-k"])] = None,
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
 ) -> None:
     """Reverse the order of top-level JSON keys or array elements.
 
-    Sorts object keys ascending, then reverses them.
+    Reverses the existing order without sorting first.
     Only affects the top-level container;
     nested objects are left untouched.
 
+    Use `lx json sort ... | lx json reverse` if you need
+    sorted-then-reversed output.
+
+    Use --key to reverse-sort an array of objects by a top-level key.
+
     Example: lx json reverse '{"a":1,"b":2,"c":3}'
     Example: lx json reverse '[3,1,2]'
+    Example: lx json reverse --key age users.json
+
+    Options
+    -------
+    --key, -k
+        Reverse-sort array of objects by this top-level key.
+    --strict, -s
+        Error if any object is missing the key (only with --key).
     """
     check_empty_stdin(input, app, ["reverse"])
     try:
-        output.write_bytes(lx_json.reverse_json(input.read_bytes()))
+        output.write_bytes(lx_json.reverse_json(input.read_bytes(), key=key, strict=strict))
     except lx_json.JSONError as e:
         sys.exit(str(e))
 
