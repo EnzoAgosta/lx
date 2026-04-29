@@ -24,7 +24,7 @@ def safe_get_next_row(stream: Iterator[list[str]]) -> list[str]:
     try:
         return next(stream)
     except StopIteration:
-        raise CSVError("Csv file is empty")
+        raise CSVError("CSV file is empty")
 
 
 def _get_indices_from_names(names: list[str], header: list[str], strict: bool) -> list[int]:

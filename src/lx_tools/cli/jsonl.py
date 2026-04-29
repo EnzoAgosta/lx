@@ -1,4 +1,3 @@
-import random
 import sys
 from typing import Annotated
 
@@ -9,7 +8,13 @@ import orjson
 from lx_tools.cli import InputType, OutputType, check_empty_stdin
 import lx_tools.lib.jsonl as lx_jsonl
 
-app = App(name="jsonl", help="""JSON Lines utilities. Assumes valid UTF-8 per RFC 8259.""")
+app = App(
+    name="jsonl",
+    help="""JSON Lines utilities. Assumes valid UTF-8 per RFC 8259.
+
+    All output normalizes line endings to \\n regardless of input.
+    """,
+)
 
 
 @app.command
@@ -117,9 +122,9 @@ def validate(
 ) -> None:
     """Validate that every non-empty line is valid JSON.
 
-    If valid, the input is passed through unchanged so you can use this
-    as a guard in a pipeline (though most other commands still validate
-    internally anyway).
+    If valid, the input is returned with line endings normalized to \n
+    so you can use this as a guard in a pipeline (though most other
+    commands still validate internally anyway).
 
     Example: lx jsonl validate file.jsonl | lx jsonl sort --key name
     """
@@ -229,7 +234,7 @@ def pluck(
             result = [lx_jsonl.pluck_field(line, key) for line in f]
         except lx_jsonl.JSONLError as e:
             sys.exit(str(e))
-    output.write_bytes(b"\n".join(orjson.dumps(line) for line in result if line is not None))
+    output.write_bytes(b"\n".join(orjson.dumps(line) for line in result if line is not None) + b"\n")
 
 
 @app.command

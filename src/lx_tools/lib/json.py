@@ -71,16 +71,14 @@ def sort_json(data: bytes, *, recurse: bool = False, key: str | None = None, str
             raise RuntimeError(f"Unexpected type: {type(obj)}")
 
 
-def pretty_json(data: bytes, *, sort_keys: bool = False) -> bytes:
+def pretty_json(data: bytes) -> bytes:
     """Pretty-print JSON with 2-space indentation."""
-    option = orjson.OPT_INDENT_2 | (orjson.OPT_SORT_KEYS if sort_keys else 0)
-    return orjson.dumps(_loads(data), option=option)
+    return orjson.dumps(_loads(data), option=orjson.OPT_INDENT_2)
 
 
-def minify_json(data: bytes, *, sort_keys: bool = False) -> bytes:
+def minify_json(data: bytes) -> bytes:
     """Minify JSON by removing unnecessary whitespace."""
-    option = orjson.OPT_SORT_KEYS if sort_keys else 0
-    return orjson.dumps(_loads(data), option=option)
+    return orjson.dumps(_loads(data))
 
 
 def validate_json(data: bytes) -> None:

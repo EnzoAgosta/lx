@@ -63,26 +63,18 @@ def sort(
 def pretty(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
-    *,
-    sort_keys: Annotated[bool, Parameter(name=["--sort-keys", "-s"])] = False,
 ) -> None:
     """Pretty-print JSON with 2-space indentation.
 
     Produces human-readable output.
+    To also sort keys, pipe through `lx json sort` first.
 
-    Use --sort-keys to also sort all
-    object keys before formatting.
-
-    Example: lx json pretty --sort-keys compact.json
-
-    Options
-    -------
-    --sort-keys, -s
-        Sort keys before pretty-printing.
+    Example: lx json pretty compact.json
+    Example: lx json sort --recurse compact.json | lx json pretty
     """
     check_empty_stdin(input, app, ["pretty"])
     try:
-        output.write_bytes(lx_json.pretty_json(input.read_bytes(), sort_keys=sort_keys))
+        output.write_bytes(lx_json.pretty_json(input.read_bytes()))
     except lx_json.JSONError as e:
         sys.exit(str(e))
 
@@ -91,26 +83,18 @@ def pretty(
 def minify(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
-    *,
-    sort_keys: Annotated[bool, Parameter(name=["--sort-keys", "-s"])] = False,
 ) -> None:
     """Minify JSON by removing unnecessary whitespace.
 
     Produces the most compact representation.
+    To also sort keys, pipe through `lx json sort` first.
 
-    Use --sort-keys to also
-    sort all object keys first.
-
-    Example: lx json minify --sort-keys pretty.json
-
-    Options
-    -------
-    --sort-keys, -s
-        Sort keys before minifying.
+    Example: lx json minify pretty.json
+    Example: lx json sort --recurse pretty.json | lx json minify
     """
     check_empty_stdin(input, app, ["minify"])
     try:
-        output.write_bytes(lx_json.minify_json(input.read_bytes(), sort_keys=sort_keys))
+        output.write_bytes(lx_json.minify_json(input.read_bytes()))
     except lx_json.JSONError as e:
         sys.exit(str(e))
 

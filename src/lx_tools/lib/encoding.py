@@ -93,8 +93,12 @@ def add_bom(data: bytes, encoding: BomEncoding = "utf-8-sig") -> bytes:
 
 
 def strip_bom(data: bytes) -> bytes:
-    """Remove any leading BOM from data."""
-    for bom in _BOMS.values():
+    """Remove any leading BOM from data.
+
+    Checks longest BOMs first to avoid partial matches
+    (e.g. UTF-16-LE BOM is a prefix of UTF-32-LE BOM).
+    """
+    for bom in sorted(_BOMS.values(), key=len, reverse=True):
         if data.startswith(bom):
             return data.removeprefix(bom)
     return data
