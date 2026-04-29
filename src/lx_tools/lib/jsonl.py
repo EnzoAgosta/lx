@@ -82,6 +82,26 @@ def sample_jsonl(
     return reservoir
 
 
+def shuffle_jsonl(
+    stream: Iterable[bytes],
+    *,
+    seed: int | float | str | bytes | bytearray | None = None,
+) -> list[bytes]:
+    """Shuffle JSON Lines using incremental forward Fisher-Yates.
+
+    Builds the result line-by-line, swapping each new line with a random
+    earlier position. Memory usage is O(n) where n is the number of lines.
+    """
+    rng = random.Random(seed)
+    result: list[bytes] = []
+    for k, line in enumerate(stream):
+        result.append(line)
+        j = rng.randint(0, k)
+        if j < k:
+            result[k], result[j] = result[j], result[k]
+    return result
+
+
 def sort_jsonl(lines: list[bytes], sort_key: str, *, reverse: bool = False, strict: bool = False) -> list[bytes]:
     """Sort JSON Lines by a top-level key.
 

@@ -206,12 +206,21 @@ def tail_csv(stream: TextIO, n: int, *, header: bool = False) -> str:
 def shuffle_csv(
     stream: TextIO, *, header: bool = False, seed: int | float | str | bytes | bytearray | None = None
 ) -> str:
-    """Shuffle CSV rows randomly. Preserves header if present."""
+    """Shuffle CSV rows randomly using incremental forward Fisher-Yates.
+
+    Preserves header if present. Memory usage is O(n) where n is the number of rows.
+    """
     reader = csv.reader(stream)
     rng = random.Random(seed)
     parsed_header = safe_get_next_row(reader) if header else None
-    rows = list(reader)
-    rng.shuffle(rows)
+
+    rows: list[list[str]] = []
+    for k, row in enumerate(reader):
+        rows.append(row)
+        j = rng.randint(0, k)
+        if j < k:
+            rows[k], rows[j] = rows[j], rows[k]
+
     return _format_csv(parsed_header, *rows) if parsed_header is not None else _format_csv(*rows)
 
 

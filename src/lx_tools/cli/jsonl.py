@@ -266,8 +266,6 @@ def shuffle(
     """Shuffle JSON Lines randomly.
 
     By default each line is validated as JSON.
-
-    By default each line is validated as JSON.
     You can use --raw-lines to skip validation
     and treat the input as plain text lines
     if you're planning on piping the output
@@ -285,16 +283,17 @@ def shuffle(
         Skip JSON validation.
     """
     check_empty_stdin(input, app, ["shuffle"])
-    with input.open("rb") as f:
-        lines = f.readlines()
+    try:
+        with input.open("rb") as f:
+            lines = lx_jsonl.shuffle_jsonl(f, seed=seed)
+    except lx_jsonl.JSONLError as e:
+        sys.exit(str(e))
     if not raw:
         for line in lines:
             try:
                 lx_jsonl.parse_line(line)
             except lx_jsonl.JSONLError as e:
                 sys.exit(str(e))
-    rng = random.Random(seed)
-    rng.shuffle(lines)
     output.write_bytes(b"".join(lines))
 
 
@@ -309,7 +308,7 @@ def sample(
 ) -> None:
     """Sample N lines from JSON Lines without replacement.
 
-    Uses reservoir sampling so memory usage stays O(N)
+    Uses reservoir sampling so memory usage stays O(n)
     regardless of file size.
 
     By default each line is validated as JSON.
