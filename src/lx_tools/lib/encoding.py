@@ -9,8 +9,11 @@ class EncodingMatch(NamedTuple):
     confidence: float
 
 
+class EncodingError(Exception):
+    pass
+
+
 BomEncoding = Literal[
-    "utf-8",
     "utf-8-sig",
     "utf-16-be",
     "utf-16-le",
@@ -48,15 +51,18 @@ def check_encoding(data: bytes, expected: str) -> str:
     """
     detected = detect_encoding(data)
     if detected is None:
-        raise ValueError("Could not detect encoding.")
-    expected_norm = codecs.lookup(expected).name
-    detected_norm = codecs.lookup(detected.encoding).name
+        raise EncodingError("Could not detect encoding.")
+    try:
+        expected_norm = codecs.lookup(expected).name
+        detected_norm = codecs.lookup(detected.encoding).name
+    except LookupError as e:
+        raise EncodingError(f"Unknown encoding: {e}") from e
     if expected_norm == detected_norm:
         return detected.encoding
     # ASCII is a valid subset of UTF-8
     if expected_norm == "utf-8" and detected_norm == "ascii":
         return detected.encoding
-    raise ValueError(f"Expected {expected_norm}, detected {detected_norm}")
+    raise EncodingError(f"Expected {expected_norm}, detected {detected_norm}")
 
 
 def recode(data: bytes, from_encoding: str | None, to_encoding: str, *, errors: RecodeErrors = "strict") -> bytes:
@@ -64,7 +70,7 @@ def recode(data: bytes, from_encoding: str | None, to_encoding: str, *, errors: 
     if from_encoding is None:
         detected = detect_encoding(data)
         if detected is None:
-            raise ValueError("Could not auto-detect source encoding.")
+            raise EncodingError("Could not auto-detect source encoding.")
         from_encoding = detected.encoding
     text = data.decode(from_encoding, errors=errors)
     return text.encode(to_encoding, errors=errors)

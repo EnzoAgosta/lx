@@ -86,7 +86,7 @@ def check(
     data = input.read_bytes()
     try:
         lx_encoding.check_encoding(data, expected)
-    except ValueError as e:
+    except lx_encoding.EncodingError as e:
         sys.exit(str(e))
     output.write_bytes(data)
 
@@ -119,7 +119,10 @@ def recode(
     """
     check_empty_stdin(input, app, ["recode"])
     data = input.read_bytes()
-    output.write_bytes(lx_encoding.recode(data, from_encoding, to_encoding, errors=errors))
+    try:
+        output.write_bytes(lx_encoding.recode(data, from_encoding, to_encoding, errors=errors))
+    except lx_encoding.EncodingError as e:
+        sys.exit(str(e))
 
 
 @app.command
@@ -127,7 +130,7 @@ def add_bom(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
     *,
-    encoding: Annotated[lx_encoding.BomEncoding, Parameter(name=["--encoding", "-e"])] = "utf-8",
+    encoding: Annotated[lx_encoding.BomEncoding, Parameter(name=["--encoding", "-e"])],
 ) -> None:
     """Add a byte-order mark (BOM) to the data.
 
@@ -139,7 +142,7 @@ def add_bom(
     Options
     -------
     --encoding, -e
-        Encoding to add a BOM for (default: utf-8).
+        Encoding to add a BOM for (required).
     """
     check_empty_stdin(input, app, ["add_bom"])
     data = input.read_bytes()
