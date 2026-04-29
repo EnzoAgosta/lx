@@ -1,5 +1,6 @@
 from collections import deque
 from collections.abc import Iterable
+from typing import Sequence
 
 import orjson
 
@@ -19,9 +20,9 @@ def get_first_n_lines(data: Iterable[bytes], n: int) -> list[bytes]:
     return out
 
 
-def get_last_n_lines(data: Iterable[bytes], n: int) -> list[bytes]:
+def get_last_n_lines(data: Iterable[bytes], n: int) -> Sequence[bytes]:
     """Get the last N non-empty lines from data."""
-    out = deque(maxlen=n)
+    out: deque[bytes] = deque(maxlen=n)
     for line in data:
         if line.strip():
             out.append(line.rstrip(b"\r\n"))
@@ -70,7 +71,6 @@ def sort_jsonl(lines: list[bytes], sort_key: str, *, reverse: bool = False, stri
         entries.append(data)
     try:
         entries.sort(key=lambda x: (x.get(sort_key) is not None, x.get(sort_key)), reverse=reverse)
-        return [orjson.dumps(entry) for entry in entries]
     except TypeError as e:
         ctx = (entry for entry in entries if sort_key in entry)
         first_seen_type = type(next(ctx))
@@ -80,3 +80,4 @@ def sort_jsonl(lines: list[bytes], sort_key: str, *, reverse: bool = False, stri
                     f"Cannot sort JSONL lines by key {sort_key!r} because they are of different types."
                     f" Expected {first_seen_type!r}, got {type(entry[sort_key])!r} in line: {orjson.dumps(entry)!r}"
                 ) from e
+    return [orjson.dumps(entry) for entry in entries]

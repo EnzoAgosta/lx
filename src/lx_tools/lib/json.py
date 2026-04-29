@@ -45,7 +45,8 @@ def reverse_json(data: bytes) -> bytes:
     obj = _loads(data)
     sorted_bytes = orjson.dumps(obj, option=orjson.OPT_SORT_KEYS)
     sorted_obj = _loads(sorted_bytes)
-    reversed_obj = {k: sorted_obj[k] for k in reversed(sorted_obj)}
+    # Can't really properly type this, so we have to ignore the next line
+    reversed_obj = {k: sorted_obj[k] for k in reversed(sorted_obj)}  # type: ignore
     return orjson.dumps(reversed_obj)
 
 

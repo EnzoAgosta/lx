@@ -56,13 +56,11 @@ def sort(
         Error if a row is missing the sort column.
     """
     check_empty_stdin(input, app, ["sort"])
-    if not name and not index:
-        sys.exit("Must specify --name or --index.")
     try:
         with input.open("r", encoding=encoding) as f:
             if name is not None:
                 result = lx_csv.sort_csv_by_name(f, name, desc=False, strict=strict)
-            else:
+            elif index is not None:
                 result = lx_csv.sort_csv_by_index(f, index, desc=False, strict=strict, header=header)
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
@@ -109,7 +107,7 @@ def reverse(
         with input.open("r", encoding=encoding) as f:
             if name is not None:
                 result = lx_csv.sort_csv_by_name(f, name, desc=True, strict=strict)
-            else:
+            elif index is not None:
                 result = lx_csv.sort_csv_by_index(f, index, desc=True, strict=strict, header=header)
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
@@ -156,7 +154,7 @@ def select(
                 result = lx_csv.select_column_by_name(
                     f, names=[name.strip() for name in names.split(",")], strict=strict
                 )
-            else:
+            elif indices is not None:
                 result = lx_csv.select_column_by_index(
                     f, indices=[int(i.strip()) for i in indices.split(",")], strict=strict
                 )
@@ -272,7 +270,7 @@ def shuffle(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
     *,
-    seed: Annotated[int | float | str, Parameter(name=["--seed", "-s"])] = None,
+    seed: Annotated[int | float | str | None, Parameter(name=["--seed", "-s"])] = None,
     header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
     encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
 ) -> None:
@@ -308,7 +306,7 @@ def sample(
     output: OutputType = StdioPath("-"),
     *,
     n: Annotated[int, Parameter(name=["--n", "-n"], validator=validators.Number(gt=0))] = 10,
-    seed: Annotated[int | float | str, Parameter(name=["--seed", "-s"])] = None,
+    seed: Annotated[int | float | str | None, Parameter(name=["--seed", "-s"])] = None,
     header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
     encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
 ) -> None:
@@ -382,7 +380,7 @@ def remove(
                 result = lx_csv.remove_column_by_name(
                     f, names=[name.strip() for name in names.split(",")], strict=strict
                 )
-            else:
+            elif indices is not None:
                 result = lx_csv.remove_column_by_index(
                     f, indices=[int(i.strip()) for i in indices.split(",")], strict=strict
                 )

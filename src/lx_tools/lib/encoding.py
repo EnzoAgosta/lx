@@ -1,5 +1,5 @@
 import codecs
-from typing import Literal, NamedTuple
+from typing import Literal, NamedTuple, overload
 
 from charset_normalizer import from_bytes
 
@@ -21,6 +21,10 @@ BomEncoding = Literal[
 RecodeErrors = Literal["strict", "replace", "ignore"]
 
 
+@overload
+def detect_encoding(data: bytes, all: Literal[False] = False) -> EncodingMatch | None: ...
+@overload
+def detect_encoding(data: bytes, all: bool = False) -> list[EncodingMatch] | None: ...
 def detect_encoding(data: bytes, all: bool = False) -> EncodingMatch | list[EncodingMatch] | None:
     """Detect the encoding of byte data.
 
@@ -75,15 +79,11 @@ _BOMS = {
 }
 
 
-def add_bom(data: bytes, encoding: BomEncoding = "utf-8") -> bytes:
+def add_bom(data: bytes, encoding: BomEncoding = "utf-8-sig") -> bytes:
     """Add a BOM for the given encoding."""
-    encoding = encoding.lower().replace("_", "-")
-    key = encoding if encoding in _BOMS else f"{encoding}-sig"
-    if key not in _BOMS:
-        raise ValueError(f"No BOM defined for encoding: {encoding}")
-    bom = _BOMS[key]
+    # cyclopts handles validating `encoding` value
     stripped = strip_bom(data)
-    return bom + stripped
+    return _BOMS[encoding] + stripped
 
 
 def strip_bom(data: bytes) -> bytes:

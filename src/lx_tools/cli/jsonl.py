@@ -260,7 +260,7 @@ def shuffle(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
     *,
-    seed: Annotated[int | float | str, Parameter(name=["--seed", "-s"])] = None,
+    seed: Annotated[int | float | str | None, Parameter(name=["--seed", "-s"])] = None,
     raw: Annotated[bool, Parameter(name=["--raw-lines", "-r"])] = False,
 ) -> None:
     """Shuffle JSON Lines randomly.
@@ -304,7 +304,7 @@ def sample(
     output: OutputType = StdioPath("-"),
     *,
     n: Annotated[int, Parameter(name=["--n", "-n"], validator=validators.Number(gt=0))] = 10,
-    seed: Annotated[int | float | str, Parameter(name=["--seed", "-s"])] = None,
+    seed: Annotated[int | float | str | None, Parameter(name=["--seed", "-s"])] = None,
     raw: Annotated[bool, Parameter(name=["--raw-lines", "-r"])] = False,
 ) -> None:
     """Sample N lines from JSON Lines without replacement.
