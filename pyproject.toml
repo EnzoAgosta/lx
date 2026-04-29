@@ -1,6 +1,6 @@
 [project]
 name = "lx-tools"
-version = "0.1.0"
+version = "0.1.1"
 description = "In Development. Holding the name of the project."
 readme = "README.md"
 authors = [{ name = "Enzo Agosta", email = "agosta.enzo@gmail.com" }]
