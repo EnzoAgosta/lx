@@ -228,9 +228,8 @@ def tail_csv(stream: TextIO, n: int, *, header: bool = False) -> str:
 def shuffle_csv(text: str, *, header: bool = False, seed: object = None) -> str:
     """Shuffle CSV rows randomly. Preserves header if present."""
     parsed_header, rows = _parse_csv(text, header=header)
-    if seed is not None:
-        random.seed(seed)
-    random.shuffle(rows)
+    rng = random.Random(seed)
+    rng.shuffle(rows)
     if parsed_header is not None:
         return _write_csv([parsed_header, *rows])
     return _write_csv(rows)
@@ -239,10 +238,9 @@ def shuffle_csv(text: str, *, header: bool = False, seed: object = None) -> str:
 def sample_csv(text: str, n: int, *, header: bool = False, seed: object = None) -> str:
     """Sample N rows without replacement. Preserves header if present."""
     parsed_header, rows = _parse_csv(text, header=header)
-    if seed is not None:
-        random.seed(seed)
+    rng = random.Random(seed)
     try:
-        result = random.sample(rows, k=n)
+        result = rng.sample(rows, k=n)
     except ValueError:
         raise CSVError(f"Cannot sample {n} rows from {len(rows)} available.")
     if parsed_header is not None:

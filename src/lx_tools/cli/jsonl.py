@@ -166,7 +166,7 @@ def sort(
         result = lx_jsonl.sort_jsonl(lines, key, strict=strict)
     except lx_jsonl.JSONLError as e:
         sys.exit(str(e))
-    output.write_bytes(b"".join(result))
+    output.write_bytes(b"\n".join(result) + b"\n")
 
 
 @app.command
@@ -200,7 +200,7 @@ def reverse(
         result = lx_jsonl.sort_jsonl(lines, key, reverse=True, strict=strict)
     except lx_jsonl.JSONLError as e:
         sys.exit(str(e))
-    output.write_bytes(b"".join(result))
+    output.write_bytes(b"\n".join(result) + b"\n")
 
 
 @app.command
@@ -293,9 +293,8 @@ def shuffle(
                 lx_jsonl.parse_line(line)
             except lx_jsonl.JSONLError as e:
                 sys.exit(str(e))
-    if seed is not None:
-        random.seed(seed)
-    random.shuffle(lines)
+    rng = random.Random(seed)
+    rng.shuffle(lines)
     output.write_bytes(b"".join(lines))
 
 
@@ -340,10 +339,9 @@ def sample(
                 lx_jsonl.parse_line(line)
             except lx_jsonl.JSONLError as e:
                 sys.exit(str(e))
-    if seed is not None:
-        random.seed(seed)
+    rng = random.Random(seed)
     try:
-        result = random.sample(lines, k=n)
+        result = rng.sample(lines, k=n)
     except ValueError:
         sys.exit(f"Cannot sample {n} lines from {len(lines)} available.")
     output.write_bytes(b"".join(result))

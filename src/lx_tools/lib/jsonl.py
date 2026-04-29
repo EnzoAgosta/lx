@@ -50,11 +50,12 @@ def pluck_field(line: bytes, key: str) -> object:
     return None
 
 
-def sort_jsonl(lines: list[bytes], key: str, *, reverse: bool = False, strict: bool = False) -> list[bytes]:
+def sort_jsonl(lines: list[bytes], sort_key: str, *, reverse: bool = False, strict: bool = False) -> list[bytes]:
     """Sort JSON Lines by a top-level key.
 
-    Missing keys sort as None (null). With strict=True, raises if any line
-    is missing the key.
+    Lines without the key or with a null value sort first.
+    With strict=True, raises if any line is missing the key.
+    Raises if the key exists with mixed types across lines.
     """
     entries = []
     for line in lines:
@@ -63,11 +64,19 @@ def sort_jsonl(lines: list[bytes], key: str, *, reverse: bool = False, strict: b
             continue
         if not isinstance(data, dict):
             raise JSONLError(f"JSONL line is not an object: {line!r}")
-        if key not in data:
+        if sort_key not in data:
             if strict:
-                raise JSONLError(f"Missing key {key!r} in JSONL line: {line!r}")
-        value = data.get(key)
-        entries.append((orjson.dumps(value), line))
-
-    entries.sort(key=lambda x: x[0], reverse=reverse)
-    return [line for _, line in entries]
+                raise JSONLError(f"Missing key {sort_key!r} in JSONL line: {line!r}")
+        entries.append(data)
+    try:
+        entries.sort(key=lambda x: (x.get(sort_key) is not None, x.get(sort_key)), reverse=reverse)
+        return [orjson.dumps(entry) for entry in entries]
+    except TypeError as e:
+        ctx = (entry for entry in entries if sort_key in entry)
+        first_seen_type = type(next(ctx))
+        for entry in ctx:
+            if type(entry[sort_key]) is not first_seen_type:
+                raise JSONLError(
+                    f"Cannot sort JSONL lines by key {sort_key!r} because they are of different types."
+                    f" Expected {first_seen_type!r}, got {type(entry[sort_key])!r} in line: {orjson.dumps(entry)!r}"
+                ) from e

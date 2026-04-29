@@ -109,7 +109,9 @@ def validate(
     """
     check_empty_stdin(input, app, ["validate"])
     try:
-        output.write_bytes(lx_json.validate_json(input.read_bytes()))
+        data = input.read_bytes()
+        lx_json.validate_json(data)
+        output.write_bytes(data)
     except lx_json.JSONError as e:
         sys.exit(str(e))
 
