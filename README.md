@@ -8,15 +8,15 @@ A pipe-friendly Swiss-army knife CLI for data manipulation.
 
 Every command defaults to reading from `stdin` and writing to `stdout`, so `lx` composes naturally with other Unix tools.
 
-> **Status:** Early development (`v0.1.0`). APIs and command names may change.
+> **Status:** Early development (`v0.2.0`). APIs and command names may change.
 
 ---
 
 ## Features
 
-- **JSON** – pretty-print, minify, validate, sort keys (recursively or by array key), reverse key or array order, convert to JSON Lines
-- **JSON Lines** – count, head, tail, validate, sort and reverse-sort by key, pluck fields, shuffle, sample, convert to a JSON array
-- **CSV** – sort and reverse-sort by column name or index, select or remove columns, count rows, head, tail, shuffle, sample
+- **JSON** – pretty-print, minify, validate, sort keys (recursively or by array key), reverse key or array order, deduplicate, rename keys, select keys, move keys, pluck values, convert to JSON Lines
+- **JSON Lines** – count, head, tail, validate, sort and reverse-sort by key, deduplicate, rename keys, select keys, move keys, pluck values, shuffle, sample, convert to a JSON array
+- **CSV** – sort and reverse-sort by column name or index, select or remove columns, deduplicate, rename columns, move columns, count rows, head, tail, shuffle, sample
 - **Encoding** – detect (with confidence scores), check against an expected encoding, recode, add or strip BOM
 
 Built on [**orjson**](https://github.com/ijl/orjson) for fast JSON handling and [**charset-normalizer**](https://github.com/Ousret/charset_normalizer) for encoding detection.
@@ -84,6 +84,21 @@ lx json reverse '{"a":1,"b":2,"c":3}'
 # Reverse-sort an array of objects by key
 lx json reverse --key age users.json
 
+# Deduplicate a JSON array (keeps first occurrence)
+lx json dedup '[1,2,1,3]'
+
+# Rename a top-level key
+lx json rename --old name --new full_name data.json
+
+# Select only specific keys (in given order)
+lx json select --keys name,age user.json
+
+# Reorder keys to front or back
+lx json move --keys b,a --front '{"a":1,"b":2,"c":3}'
+
+# Extract a single value
+lx json pluck --key name user.json
+
 # Convert a JSON array to JSON Lines
 cat array.json | lx json to-jsonl
 ```
@@ -107,7 +122,19 @@ lx jsonl sort --key timestamp data.jsonl
 # Reverse-sort by key (missing keys sort last)
 lx jsonl reverse --key timestamp data.jsonl
 
-# Extract a field from each object
+# Deduplicate lines (keeps first occurrence, normalizes whitespace)
+lx jsonl dedup data.jsonl
+
+# Rename a key in every object
+lx jsonl rename --old name --new full_name data.jsonl
+
+# Select only specific keys from each line
+lx jsonl select --keys name,age users.jsonl
+
+# Reorder keys to front or back on each line
+lx jsonl move --keys b,a --front data.jsonl
+
+# Extract a single value from each object (skips missing by default)
 lx jsonl pluck --key user_id data.jsonl
 
 # Convert JSON Lines to a JSON array
@@ -131,6 +158,18 @@ lx csv sort --index 2 data.csv
 
 # Reverse-sort by column name
 lx csv reverse --header --name Age data.csv
+
+# Deduplicate data rows (--header preserves header row)
+lx csv dedup --header data.csv
+
+# Rename a column by header name (first row is always header)
+lx csv rename --old Name --new FullName data.csv
+
+# Reorder columns by name (first row is always header)
+lx csv move --names Age,Name --front data.csv
+
+# Reorder columns by zero-based index
+lx csv move --indices 2,0 --back data.csv
 
 # Keep only specific columns (first row treated as header)
 lx csv select --names Name,Email data.csv
@@ -177,7 +216,7 @@ lx encoding strip-bom file.txt
 
 ### Flags you will reach for often
 
-- `--strict` – on `sort`, `reverse`, and `pluck` commands: raise an error instead of silently skipping rows or objects that lack the requested key.
+- `--strict` – on `sort`, `reverse`, `select`, `move`, and `pluck` commands: raise an error instead of silently skipping rows or objects that lack the requested key.
 - `--seed` – on `shuffle` and `sample` commands: make random output reproducible.
 - `--raw-lines` – on `jsonl head`, `tail`, `shuffle`, and `sample`: skip JSON validation and treat the input as plain text lines.
 - `--recurse` – on `json sort`: sort keys recursively inside nested objects.
@@ -187,20 +226,19 @@ lx encoding strip-bom file.txt
 
 ```bash
 # Stable diff between two JSON files
-lx json sort --recurse a.json > a.sorted.json
-lx json sort --recurse b.json > b.sorted.json
+lx json sort --recurse a.json a.sorted.json
+lx json sort --recurse b.json b.sorted.json
 diff a.sorted.json b.sorted.json
 
 # Chain multiple operations
 curl -s https://api.example.com/data.json \
+  | lx jsonl sort --key id \
   | lx jsonl to-json \
-  | lx json sort --key id \
   | lx json pretty \
-  | lx encoding add-bom --encoding utf-8 \
-  > sorted.json
+  | lx encoding add-bom --encoding utf-8 --output sorted.json
 
 # Sample CSV, then select columns
-lx csv sample huge.csv --header -n 1000 - | lx csv select --names colA,colB --output subset.csv
+lx csv sample huge.csv --header -n 1000 | lx csv select --names colA,colB --output subset.csv
 
 # Query YAML with yq, then format with lx
 cat config.yml | yq '.services.web' | lx json pretty --output config.web.json
