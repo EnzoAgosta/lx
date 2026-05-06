@@ -20,8 +20,8 @@ always UTF-8 no matter the input encoding.
 )
 
 only_one = Group(validator=cyclopts.validators.mutually_exclusive)
-move_cols = Group(validator=cyclopts.validators.MutuallyExclusive())
-move_dir = Group(validator=cyclopts.validators.MutuallyExclusive())
+move_cols = Group(validator=cyclopts.validators.mutually_exclusive)
+move_dir = Group(validator=cyclopts.validators.mutually_exclusive)
 
 
 @app.command
@@ -442,9 +442,11 @@ def move(
     try:
         with input.open("r", encoding=encoding) as f:
             if names is not None:
-                result = lx_csv.move_csv(f, names=[n.strip() for n in names.split(",")], back=back, strict=strict)
+                result = lx_csv.move_csv_by_name(
+                    f, names=[n.strip() for n in names.split(",")], back=back, strict=strict
+                )
             elif indices is not None:
-                result = lx_csv.move_csv(
+                result = lx_csv.move_csv_by_index(
                     f, indices=[int(i.strip()) for i in indices.split(",")], back=back, strict=strict
                 )
         output.write_text(result, encoding="utf-8")

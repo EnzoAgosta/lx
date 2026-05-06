@@ -16,7 +16,7 @@ app = App(
     """,
 )
 
-move_options = Group(validator=validators.MutuallyExclusive())
+move_options = Group(validator=validators.mutually_exclusive)
 
 
 @app.command
