@@ -246,17 +246,15 @@ def dedup_csv(stream: TextIO, header: bool = False) -> str:
     return _format_csv(*result)
 
 
-def rename_csv(stream: TextIO, old: str, new: str, header: bool = False) -> str:
+def rename_csv(stream: TextIO, old: str, new: str) -> str:
     """Rename a column by header name.
 
-    Requires header=True.
-    Raises CSVError if --header is not provided,
-    if the old column is not found, or if the new column name already exists
+    The first row is always treated as a header.
+    Raises CSVError if the old column is not found,
+    or if the new column name already exists
     (unless new == old, in which case it's a no-op).
     All data rows are output unchanged.
     """
-    if not header:
-        raise CSVError("--header is required for rename.")
     reader = csv.reader(stream)
     parsed_header = safe_get_next_row(reader)
     if old not in parsed_header:

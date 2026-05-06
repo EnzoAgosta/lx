@@ -374,22 +374,21 @@ def rename(
     *,
     old: Annotated[str, Parameter(name=["--old"])],
     new: Annotated[str, Parameter(name=["--new"])],
-    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
     encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
 ) -> None:
     """Rename a column by header name.
 
-    Requires --header.
+    The first row is always treated as a header.
     Errors if the old column is not found, or if the new column name
     already exists in the header (unless new == old).
     All data rows are output unchanged.
 
-    Example: lx csv rename --header --old Name --new FullName data.csv
+    Example: lx csv rename --old Name --new FullName data.csv
     """
     check_empty_stdin(input, app, ["rename"])
     try:
         with input.open("r", encoding=encoding) as f:
-            result = lx_csv.rename_csv(f, old=old, new=new, header=header)
+            result = lx_csv.rename_csv(f, old=old, new=new)
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))
