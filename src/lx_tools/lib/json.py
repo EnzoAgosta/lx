@@ -126,6 +126,27 @@ def dedup_json(data: bytes) -> bytes:
     return orjson.dumps(result)
 
 
+def rename_json(data: bytes, old: str, new: str) -> bytes:
+    """Rename a top-level key in a JSON object.
+
+    Preserves key order.
+    Raises JSONError if the input is not an object,
+    if the old key does not exist, or if the new key already exists
+    (unless new == old, in which case it's a no-op).
+    """
+    obj = _loads(data)
+    if not isinstance(obj, dict):
+        raise JSONError("Input must be a JSON object.")
+    if old not in obj:
+        raise JSONError(f"Key {old!r} not found in object.")
+    if new in obj and new != old:
+        raise JSONError(f"Key {new!r} already exists in object.")
+    if old == new:
+        return data
+    result = {new if k == old else k: v for k, v in obj.items()}
+    return orjson.dumps(result)
+
+
 def to_jsonl(data: bytes) -> bytes:
     """Convert a JSON array to JSON Lines.
 

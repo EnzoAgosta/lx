@@ -246,6 +246,29 @@ def dedup_csv(stream: TextIO, header: bool = False) -> str:
     return _format_csv(*result)
 
 
+def rename_csv(stream: TextIO, old: str, new: str, header: bool = False) -> str:
+    """Rename a column by header name.
+
+    Requires header=True.
+    Raises CSVError if --header is not provided,
+    if the old column is not found, or if the new column name already exists
+    (unless new == old, in which case it's a no-op).
+    All data rows are output unchanged.
+    """
+    if not header:
+        raise CSVError("--header is required for rename.")
+    reader = csv.reader(stream)
+    parsed_header = safe_get_next_row(reader)
+    if old not in parsed_header:
+        raise CSVError(f"Column name not found in header: {old!r}. Available columns: {parsed_header!r}")
+    if new in parsed_header and new != old:
+        raise CSVError(f"Column name {new!r} already exists in header.")
+    if old == new:
+        return _format_csv(parsed_header, *reader)
+    renamed_header = [new if cell == old else cell for cell in parsed_header]
+    return _format_csv(renamed_header, *reader)
+
+
 def sample_csv(
     stream: TextIO, n: int, *, header: bool = False, seed: int | float | str | bytes | bytearray | None = None
 ) -> str:

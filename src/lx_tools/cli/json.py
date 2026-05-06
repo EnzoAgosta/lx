@@ -177,6 +177,29 @@ def dedup(
 
 
 @app.command
+def rename(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    old: Annotated[str, Parameter(name=["--old"])],
+    new: Annotated[str, Parameter(name=["--new"])],
+) -> None:
+    """Rename a top-level key in a JSON object.
+
+    Preserves key order.
+    Errors if the input is not an object, if the old key does not exist,
+    or if the new key already exists (unless new == old).
+
+    Example: lx json rename --old name --new full_name data.json
+    """
+    check_empty_stdin(input, app, ["rename"])
+    try:
+        output.write_bytes(lx_json.rename_json(input.read_bytes(), old=old, new=new))
+    except lx_json.JSONError as e:
+        sys.exit(str(e))
+
+
+@app.command
 def to_jsonl(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),

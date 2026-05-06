@@ -123,6 +123,35 @@ def dedup_jsonl(lines: Iterable[bytes]) -> list[bytes]:
     return result
 
 
+def rename_jsonl(lines: Iterable[bytes], old: str, new: str) -> list[bytes]:
+    """Rename a top-level key in every non-empty JSONL object line.
+
+    Empty lines are dropped.
+    Raises JSONLError if any line is not an object,
+    if the old key does not exist in any line, or if the new key already exists
+    (unless new == old, in which case that line is passed through unchanged).
+    """
+    result: list[bytes] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        data = parse_line(line)
+        if data is None:
+            continue
+        if not isinstance(data, dict):
+            raise JSONLError(f"JSONL line is not an object: {line!r}")
+        if old not in data:
+            raise JSONLError(f"Key {old!r} not found in JSONL line: {line!r}")
+        if new in data and new != old:
+            raise JSONLError(f"Key {new!r} already exists in JSONL line: {line!r}")
+        if old == new:
+            result.append(line.rstrip(b"\r\n"))
+        else:
+            renamed = {new if k == old else k: v for k, v in data.items()}
+            result.append(orjson.dumps(renamed))
+    return result
+
+
 def sort_jsonl(lines: list[bytes], sort_key: str, *, reverse: bool = False, strict: bool = False) -> list[bytes]:
     """Sort JSON Lines by a top-level key.
 

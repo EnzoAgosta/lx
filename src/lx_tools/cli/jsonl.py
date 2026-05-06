@@ -259,6 +259,31 @@ def pluck(
 
 
 @app.command
+def rename(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    old: Annotated[str, Parameter(name=["--old"])],
+    new: Annotated[str, Parameter(name=["--new"])],
+) -> None:
+    """Rename a top-level key in every non-empty JSONL object line.
+
+    Empty lines are dropped.
+    Errors if any line is not an object, if the old key is missing,
+    or if the new key already exists in that object (unless new == old).
+
+    Example: lx jsonl rename --old name --new full_name data.jsonl
+    """
+    check_empty_stdin(input, app, ["rename"])
+    with input.open("rb") as f:
+        try:
+            result = lx_jsonl.rename_jsonl(f, old=old, new=new)
+        except lx_jsonl.JSONLError as e:
+            sys.exit(str(e))
+    output.write_bytes(b"\n".join(result) + b"\n")
+
+
+@app.command
 def to_json(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
