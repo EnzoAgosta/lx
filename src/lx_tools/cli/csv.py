@@ -343,6 +343,31 @@ def sample(
 
 
 @app.command
+def dedup(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+) -> None:
+    """Remove duplicate data rows from CSV.
+
+    Keeps the first occurrence of each unique row.
+    With --header, the header row is preserved as-is
+    and is not deduplicated against data rows.
+
+    Example: lx csv dedup --header data.csv
+    """
+    check_empty_stdin(input, app, ["dedup"])
+    try:
+        with input.open("r", encoding=encoding) as f:
+            result = lx_csv.dedup_csv(f, header=header)
+        output.write_text(result, encoding="utf-8")
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+
+
+@app.command
 def remove(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),

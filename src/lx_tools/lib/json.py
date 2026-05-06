@@ -108,6 +108,24 @@ def reverse_json(data: bytes, *, key: str | None = None, strict: bool = False) -
             raise RuntimeError(f"Unexpected type: {type(obj)}")
 
 
+def dedup_json(data: bytes) -> bytes:
+    """Remove duplicate entries from a JSON array.
+
+    Keeps the first occurrence of each unique value.
+    Uses deep equality via Python ==.
+    """
+    obj = _loads(data)
+    if not isinstance(obj, list):
+        raise JSONError("Input must be a JSON array.")
+    seen: list[object] = []
+    result: list[object] = []
+    for item in obj:
+        if item not in seen:
+            seen.append(item)
+            result.append(item)
+    return orjson.dumps(result)
+
+
 def to_jsonl(data: bytes) -> bytes:
     """Convert a JSON array to JSON Lines.
 

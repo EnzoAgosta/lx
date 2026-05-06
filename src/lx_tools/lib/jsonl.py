@@ -102,6 +102,26 @@ def shuffle_jsonl(
     return result
 
 
+def dedup_jsonl(lines: Iterable[bytes]) -> list[bytes]:
+    """Remove duplicate lines from JSON Lines.
+
+    Keeps the first occurrence of each unique value.
+    Empty lines are dropped.
+    """
+    seen: list[object] = []
+    result: list[bytes] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        data = parse_line(line)
+        if data is None:
+            continue
+        if data not in seen:
+            seen.append(data)
+            result.append(line.rstrip(b"\r\n"))
+    return result
+
+
 def sort_jsonl(lines: list[bytes], sort_key: str, *, reverse: bool = False, strict: bool = False) -> list[bytes]:
     """Sort JSON Lines by a top-level key.
 

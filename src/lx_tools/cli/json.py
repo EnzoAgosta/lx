@@ -158,6 +158,25 @@ def reverse(
 
 
 @app.command
+def dedup(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+) -> None:
+    """Remove duplicate entries from a JSON array.
+
+    Keeps the first occurrence of each unique value.
+    Input must be a top-level JSON array.
+
+    Example: lx json dedup '[1,2,1,3]'
+    """
+    check_empty_stdin(input, app, ["dedup"])
+    try:
+        output.write_bytes(lx_json.dedup_json(input.read_bytes()))
+    except lx_json.JSONError as e:
+        sys.exit(str(e))
+
+
+@app.command
 def to_jsonl(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),

@@ -224,6 +224,27 @@ def shuffle_csv(
     return _format_csv(parsed_header, *rows) if parsed_header is not None else _format_csv(*rows)
 
 
+def dedup_csv(stream: TextIO, header: bool = False) -> str:
+    """Remove duplicate data rows from CSV.
+
+    Keeps the first occurrence of each unique row.
+    With header=True, the header row is preserved as-is.
+    """
+    reader = csv.reader(stream)
+    seen: list[list[str]] = []
+    result: list[list[str]] = []
+
+    if header:
+        result.append(safe_get_next_row(reader))
+
+    for row in reader:
+        if row not in seen:
+            seen.append(row)
+            result.append(row)
+
+    return _format_csv(*result)
+
+
 def sample_csv(
     stream: TextIO, n: int, *, header: bool = False, seed: int | float | str | bytes | bytearray | None = None
 ) -> str:

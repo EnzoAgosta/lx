@@ -39,6 +39,27 @@ def count(
 
 
 @app.command
+def dedup(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+) -> None:
+    """Remove duplicate lines from JSON Lines.
+
+    Keeps the first occurrence of each unique JSON value.
+    Empty lines are dropped.
+
+    Example: lx jsonl dedup file.jsonl
+    """
+    check_empty_stdin(input, app, ["dedup"])
+    with input.open("rb") as f:
+        try:
+            result = lx_jsonl.dedup_jsonl(f)
+        except lx_jsonl.JSONLError as e:
+            sys.exit(str(e))
+    output.write_bytes(b"\n".join(result) + b"\n")
+
+
+@app.command
 def head(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
