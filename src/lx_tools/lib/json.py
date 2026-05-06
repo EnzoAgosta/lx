@@ -147,6 +147,20 @@ def rename_json(data: bytes, old: str, new: str) -> bytes:
     return orjson.dumps(result)
 
 
+def pluck_json(data: bytes, key: str) -> bytes:
+    """Extract a top-level key value from a JSON object.
+
+    Returns the value, not wrapped in an object.
+    Raises JSONError if input is not an object or key is missing.
+    """
+    obj = _loads(data)
+    if not isinstance(obj, dict):
+        raise JSONError("Input must be a JSON object.")
+    if key not in obj:
+        raise JSONError(f"Key {key!r} not found in object.")
+    return orjson.dumps(obj[key])
+
+
 def select_json(data: bytes, keys: list[str], strict: bool = False) -> bytes:
     """Select specific keys from a JSON object.
 

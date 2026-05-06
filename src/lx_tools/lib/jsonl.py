@@ -169,6 +169,30 @@ def select_jsonl(lines: Iterable[bytes], keys: list[str], strict: bool = False) 
     return result
 
 
+def pluck_jsonl(lines: Iterable[bytes], key: str, strict: bool = False) -> list[bytes]:
+    """Extract a top-level key value from every non-empty JSONL object line.
+
+    Empty lines are dropped.
+    Each line must be a JSON object.
+    Missing keys are silently skipped unless strict=True.
+    """
+    result: list[bytes] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        data = parse_line(line)
+        if data is None:
+            continue
+        if not isinstance(data, dict):
+            raise JSONLError(f"JSONL line is not an object: {line!r}")
+        if key not in data:
+            if strict:
+                raise JSONLError(f"Key {key!r} not found in JSONL line: {line!r}")
+            continue
+        result.append(orjson.dumps(data[key]))
+    return result
+
+
 def move_jsonl(lines: Iterable[bytes], keys: list[str], back: bool = False, strict: bool = False) -> list[bytes]:
     """Reorder keys in every non-empty JSONL object line.
 

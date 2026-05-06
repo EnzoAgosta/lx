@@ -271,6 +271,32 @@ def move(
 
 
 @app.command
+def pluck(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    key: Annotated[str, Parameter(name=["--key", "-k"])],
+) -> None:
+    """Extract a top-level key value from a JSON object.
+
+    Returns just the value, not wrapped in an object.
+    Errors if the input is not an object or the key is missing.
+
+    Example: lx json pluck --key name user.json
+
+    Options
+    -------
+    --key, -k
+        The key to extract (required).
+    """
+    check_empty_stdin(input, app, ["pluck"])
+    try:
+        output.write_bytes(lx_json.pluck_json(input.read_bytes(), key=key))
+    except lx_json.JSONError as e:
+        sys.exit(str(e))
+
+
+@app.command
 def to_jsonl(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),

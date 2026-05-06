@@ -266,6 +266,38 @@ def select(
 
 
 @app.command
+def pluck(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    key: Annotated[str, Parameter(name=["--key", "-k"])],
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+) -> None:
+    """Extract a top-level key value from each non-empty JSONL object line.
+
+    Empty lines are dropped.
+    Each line must be a JSON object.
+    Missing keys are silently skipped unless --strict is used.
+
+    Example: lx jsonl pluck --key name users.jsonl
+
+    Options
+    -------
+    --key, -k
+        The key to extract (required).
+    --strict, -s
+        Error if a line is missing the key.
+    """
+    check_empty_stdin(input, app, ["pluck"])
+    with input.open("rb") as f:
+        try:
+            result = lx_jsonl.pluck_jsonl(f, key=key, strict=strict)
+        except lx_jsonl.JSONLError as e:
+            sys.exit(str(e))
+    output.write_bytes(b"\n".join(result) + b"\n")
+
+
+@app.command
 def move(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
