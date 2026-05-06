@@ -335,6 +335,42 @@ def move_csv_by_index(stream: TextIO, indices: list[int], back: bool = False, st
     return _format_csv(*result)
 
 
+def validate_csv(data: str, header: bool = False, no_empty: bool = False) -> None:
+    """Validate CSV structure.
+
+    Checks that all rows parse successfully and have consistent column counts.
+    With header=True, also checks for duplicate header names.
+    With no_empty=True, also checks that no cell is empty.
+
+    Raises CSVError on any validation failure.
+    """
+    reader = csv.reader(io.StringIO(data))
+
+    first_row = safe_get_next_row(reader)
+
+    expected_cols = len(first_row)
+
+    if header:
+        seen: set[str] = set()
+        for name in first_row:
+            if name in seen:
+                raise CSVError(f"Duplicate header name: {name!r}")
+            seen.add(name)
+
+    if no_empty:
+        for col_idx, cell in enumerate(first_row):
+            if cell == "":
+                raise CSVError(f"Empty cell at row 1, column {col_idx}.")
+
+    for row_idx, row in enumerate(reader, start=2):
+        if len(row) != expected_cols:
+            raise CSVError(f"Row {row_idx} has {len(row)} columns but expected {expected_cols}.")
+        if no_empty:
+            for col_idx, cell in enumerate(row):
+                if cell == "":
+                    raise CSVError(f"Empty cell at row {row_idx}, column {col_idx}.")
+
+
 def sample_csv(
     stream: TextIO, n: int, *, header: bool = False, seed: int | float | str | bytes | bytearray | None = None
 ) -> str:

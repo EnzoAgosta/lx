@@ -370,6 +370,45 @@ def dedup(
 
 
 @app.command
+def validate(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
+    no_empty: Annotated[bool, Parameter(name=["--no-empty"])] = False,
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+) -> None:
+    """Validate CSV structure.
+
+    Checks that all rows parse successfully and have consistent column counts.
+    With --header, also checks for duplicate header names.
+    With --no-empty, also checks that no cell is empty.
+    --strict is a shortcut for --header --no-empty.
+
+    On success, the input is passed through unchanged.
+
+    Example: lx csv validate --strict data.csv
+
+    Options
+    -------
+    --header, -H
+        Treat the first row as a header and check for duplicate names.
+    --no-empty
+        Error if any cell is empty.
+    --strict, -s
+        Equivalent to --header --no-empty.
+    """
+    check_empty_stdin(input, app, ["validate"])
+    text = input.read_text(encoding=encoding)
+    try:
+        lx_csv.validate_csv(text, header=header or strict, no_empty=no_empty or strict)
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+    output.write_text(text, encoding="utf-8")
+
+
+@app.command
 def rename(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),

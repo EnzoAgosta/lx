@@ -16,7 +16,7 @@ Every command defaults to reading from `stdin` and writing to `stdout`, so `lx` 
 
 - **JSON** – pretty-print, minify, validate, sort keys (recursively or by array key), reverse key or array order, deduplicate, rename keys, select keys, move keys, pluck values, convert to JSON Lines
 - **JSON Lines** – count, head, tail, validate, sort and reverse-sort by key, deduplicate, rename keys, select keys, move keys, pluck values, shuffle, sample, convert to a JSON array
-- **CSV** – sort and reverse-sort by column name or index, select or remove columns, deduplicate, rename columns, move columns, count rows, head, tail, shuffle, sample
+- **CSV** – sort and reverse-sort by column name or index, select or remove columns, deduplicate, rename columns, move columns, validate structure, count rows, head, tail, shuffle, sample
 - **Encoding** – detect (with confidence scores), check against an expected encoding, recode, add or strip BOM
 
 Built on [**orjson**](https://github.com/ijl/orjson) for fast JSON handling and [**charset-normalizer**](https://github.com/Ousret/charset_normalizer) for encoding detection.
@@ -162,6 +162,12 @@ lx csv reverse --header --name Age data.csv
 # Deduplicate data rows (--header preserves header row)
 lx csv dedup --header data.csv
 
+# Validate structure (checks consistent column counts)
+lx csv validate data.csv
+
+# Validate with header checks and no empty cells
+lx csv validate --strict data.csv
+
 # Rename a column by header name (first row is always header)
 lx csv rename --old Name --new FullName data.csv
 
@@ -216,11 +222,12 @@ lx encoding strip-bom file.txt
 
 ### Flags you will reach for often
 
-- `--strict` – on `sort`, `reverse`, `select`, `move`, and `pluck` commands: raise an error instead of silently skipping rows or objects that lack the requested key.
+- `--strict` – on `sort`, `reverse`, `select`, `move`, and `pluck` commands: raise an error instead of silently skipping rows or objects that lack the requested key. On `csv validate`: equivalent to `--header --no-empty`.
 - `--seed` – on `shuffle` and `sample` commands: make random output reproducible.
 - `--raw-lines` – on `jsonl head`, `tail`, `shuffle`, and `sample`: skip JSON validation and treat the input as plain text lines.
 - `--recurse` – on `json sort`: sort keys recursively inside nested objects.
 - `--header` – on CSV commands: treat the first row as a header and preserve it through the operation.
+- `--no-empty` – on `csv validate`: error if any cell is empty.
 
 ### Piping examples
 
