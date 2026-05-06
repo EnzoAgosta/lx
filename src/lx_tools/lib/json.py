@@ -13,7 +13,7 @@ def _loads(data: bytes) -> object:
         raise JSONError(f"Invalid JSON: {e}") from e
 
 
-def _sort_array_by_key(array: list, key: str, *, reverse: bool = False, strict: bool = False) -> bytes:
+def _sort_array_by_key(array: list[object], key: str, *, reverse: bool = False, strict: bool = False) -> bytes:
     """Sort an array of objects by a top-level key."""
     entries = []
     for item in array:

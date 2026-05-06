@@ -19,7 +19,7 @@ always UTF-8 no matter the input encoding.
 """,
 )
 
-only_one = Group(validator=cyclopts.validators.MutuallyExclusive())
+only_one = Group(validator=cyclopts.validators.mutually_exclusive)
 
 
 @app.command

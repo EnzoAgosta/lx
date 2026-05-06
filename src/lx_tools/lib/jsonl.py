@@ -1,7 +1,7 @@
 from collections import deque
 from collections.abc import Iterable
 import random
-from typing import Sequence
+from typing import Sequence, cast
 
 import orjson
 
@@ -37,7 +37,7 @@ def parse_line(line: bytes) -> object | None:
     try:
         if not line.strip():
             return None
-        return orjson.loads(line)
+        return cast(object, orjson.loads(line))  # orjson.loads() returns Any so need to cast to make mypy happy
     except UnicodeDecodeError as e:
         raise JSONLError(f"JSONL line is not valid UTF-8: {e}") from e
     except orjson.JSONDecodeError as e:

@@ -15,8 +15,7 @@ app = App(
     Relies on orjson for all json I/O.
 """,
 )
-
-sort_options = Group(validator=cyclopts.validators.MutuallyExclusive())
+sort_options = Group(validator=cyclopts.validators.mutually_exclusive)
 
 
 @app.command
