@@ -200,6 +200,37 @@ def rename(
 
 
 @app.command
+def select(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    keys: Annotated[str, Parameter(name=["--keys", "-k"])],
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+) -> None:
+    """Select specific keys from a JSON object.
+
+    Output contains only the specified keys, in the order given.
+    Missing keys are silently omitted by default.
+    Use --strict to error if a key is missing.
+
+    Example: lx json select --keys name,age user.json
+
+    Options
+    -------
+    --keys, -k
+        Comma-separated keys to keep (required).
+    --strict, -s
+        Error if any key is missing from the object.
+    """
+    check_empty_stdin(input, app, ["select"])
+    parsed_keys = [k.strip() for k in keys.split(",")]
+    try:
+        output.write_bytes(lx_json.select_json(input.read_bytes(), keys=parsed_keys, strict=strict))
+    except lx_json.JSONError as e:
+        sys.exit(str(e))
+
+
+@app.command
 def to_jsonl(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),

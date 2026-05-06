@@ -147,6 +147,23 @@ def rename_json(data: bytes, old: str, new: str) -> bytes:
     return orjson.dumps(result)
 
 
+def select_json(data: bytes, keys: list[str], strict: bool = False) -> bytes:
+    """Select specific keys from a JSON object.
+
+    Output contains only the specified keys, in the order given.
+    Missing keys are silently omitted unless strict=True.
+    """
+    obj = _loads(data)
+    if not isinstance(obj, dict):
+        raise JSONError("Input must be a JSON object.")
+    if strict:
+        missing = [k for k in keys if k not in obj]
+        if missing:
+            raise JSONError(f"Missing key(s) in object: {', '.join(missing)}")
+    result = {k: obj[k] for k in keys if k in obj}
+    return orjson.dumps(result)
+
+
 def to_jsonl(data: bytes) -> bytes:
     """Convert a JSON array to JSON Lines.
 

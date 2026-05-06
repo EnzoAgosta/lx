@@ -44,14 +44,6 @@ def parse_line(line: bytes) -> object | None:
         raise JSONLError(f"Invalid JSONL line: {e}") from e
 
 
-def pluck_field(line: bytes, key: str) -> object:
-    """Extract a top-level field from a JSONL object line."""
-    data = parse_line(line)
-    if isinstance(data, dict) and key in data:
-        return data[key]
-    return None
-
-
 def sample_jsonl(
     stream: Iterable[bytes],
     k: int,
@@ -149,6 +141,31 @@ def rename_jsonl(lines: Iterable[bytes], old: str, new: str) -> list[bytes]:
         else:
             renamed = {new if k == old else k: v for k, v in data.items()}
             result.append(orjson.dumps(renamed))
+    return result
+
+
+def select_jsonl(lines: Iterable[bytes], keys: list[str], strict: bool = False) -> list[bytes]:
+    """Select specific keys from every non-empty JSONL object line.
+
+    Empty lines are dropped.
+    Each line must be a JSON object.
+    Missing keys are silently omitted unless strict=True.
+    """
+    result: list[bytes] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        data = parse_line(line)
+        if data is None:
+            continue
+        if not isinstance(data, dict):
+            raise JSONLError(f"JSONL line is not an object: {line!r}")
+        if strict:
+            missing = [k for k in keys if k not in data]
+            if missing:
+                raise JSONLError(f"Missing key(s) {', '.join(missing)} in JSONL line: {line!r}")
+        selected = {k: data[k] for k in keys if k in data}
+        result.append(orjson.dumps(selected))
     return result
 
 

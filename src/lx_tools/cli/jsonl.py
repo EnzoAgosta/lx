@@ -230,32 +230,37 @@ def reverse(
 
 
 @app.command
-def pluck(
+def select(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
     *,
-    key: Annotated[str, Parameter(name=["--key", "-k"])],
+    keys: Annotated[str, Parameter(name=["--keys", "-k"])],
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
 ) -> None:
-    """Extract a top-level field from each non-empty JSON object line.
+    """Select specific keys from every non-empty JSON object line.
 
-    Outputs one JSON value per line.
-    Lines that are not objects or that
-    lack the key are silently skipped.
+    Empty lines are dropped.
+    Each line must be a JSON object.
+    Missing keys are silently omitted by default.
+    Use --strict to error if a key is missing in any line.
 
-    Example: lx jsonl pluck --key name users.jsonl
+    Example: lx jsonl select --keys name,age users.jsonl
 
     Options
     -------
-    --key, -k
-        The field to extract (required).
+    --keys, -k
+        Comma-separated keys to keep (required).
+    --strict, -s
+        Error if any line is missing a key.
     """
-    check_empty_stdin(input, app, ["pluck"])
+    check_empty_stdin(input, app, ["select"])
+    parsed_keys = [k.strip() for k in keys.split(",")]
     with input.open("rb") as f:
         try:
-            result = [lx_jsonl.pluck_field(line, key) for line in f]
+            result = lx_jsonl.select_jsonl(f, keys=parsed_keys, strict=strict)
         except lx_jsonl.JSONLError as e:
             sys.exit(str(e))
-    output.write_bytes(b"\n".join(orjson.dumps(line) for line in result if line is not None) + b"\n")
+    output.write_bytes(b"\n".join(result) + b"\n")
 
 
 @app.command
