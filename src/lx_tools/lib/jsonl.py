@@ -169,6 +169,32 @@ def select_jsonl(lines: Iterable[bytes], keys: list[str], strict: bool = False) 
     return result
 
 
+def move_jsonl(lines: Iterable[bytes], keys: list[str], back: bool = False, strict: bool = False) -> list[bytes]:
+    """Reorder keys in every non-empty JSONL object line.
+
+    Empty lines are dropped.
+    Each line must be a JSON object.
+    """
+    result: list[bytes] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        data = parse_line(line)
+        if data is None:
+            continue
+        if not isinstance(data, dict):
+            raise JSONLError(f"JSONL line is not an object: {line!r}")
+        if strict:
+            missing = [k for k in keys if k not in data]
+            if missing:
+                raise JSONLError(f"Missing key(s) {', '.join(missing)} in JSONL line: {line!r}")
+        existing = [k for k in keys if k in data]
+        remaining = [k for k in data if k not in existing]
+        order = remaining + existing if back else existing + remaining
+        result.append(orjson.dumps({k: data[k] for k in order}))
+    return result
+
+
 def sort_jsonl(lines: list[bytes], sort_key: str, *, reverse: bool = False, strict: bool = False) -> list[bytes]:
     """Sort JSON Lines by a top-level key.
 

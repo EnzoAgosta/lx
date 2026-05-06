@@ -164,6 +164,25 @@ def select_json(data: bytes, keys: list[str], strict: bool = False) -> bytes:
     return orjson.dumps(result)
 
 
+def move_json(data: bytes, keys: list[str], back: bool = False, strict: bool = False) -> bytes:
+    """Reorder keys in a JSON object.
+
+    Moves specified keys to front or back, keeping remaining keys
+    in their original order.
+    """
+    obj = _loads(data)
+    if not isinstance(obj, dict):
+        raise JSONError("Input must be a JSON object.")
+    if strict:
+        missing = [k for k in keys if k not in obj]
+        if missing:
+            raise JSONError(f"Missing key(s) in object: {', '.join(missing)}")
+    existing = [k for k in keys if k in obj]
+    remaining = [k for k in obj if k not in existing]
+    order = remaining + existing if back else existing + remaining
+    return orjson.dumps({k: obj[k] for k in order})
+
+
 def to_jsonl(data: bytes) -> bytes:
     """Convert a JSON array to JSON Lines.
 

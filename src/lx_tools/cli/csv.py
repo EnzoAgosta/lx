@@ -20,6 +20,8 @@ always UTF-8 no matter the input encoding.
 )
 
 only_one = Group(validator=cyclopts.validators.mutually_exclusive)
+move_cols = Group(validator=cyclopts.validators.MutuallyExclusive())
+move_dir = Group(validator=cyclopts.validators.MutuallyExclusive())
 
 
 @app.command
@@ -389,6 +391,62 @@ def rename(
     try:
         with input.open("r", encoding=encoding) as f:
             result = lx_csv.rename_csv(f, old=old, new=new)
+        output.write_text(result, encoding="utf-8")
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def move(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    names: Annotated[str | None, Parameter(name=["--names", "-n"], group=move_cols)] = None,
+    indices: Annotated[str | None, Parameter(name=["--indices", "-i"], group=move_cols)] = None,
+    front: Annotated[bool, Parameter(name=["--front"], group=move_dir)] = False,
+    back: Annotated[bool, Parameter(name=["--back"], group=move_dir)] = False,
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+) -> None:
+    """Reorder columns in CSV.
+
+    Moves specified columns to front or back.
+    Remaining columns stay in their original order.
+
+    Use --names to specify columns by header name (first row is header).
+    Use --indices to specify columns by zero-based index.
+
+    Missing columns are silently skipped unless --strict is used.
+
+    Example: lx csv move --names Age,Name --front data.csv
+    Example: lx csv move --indices 2,0 --back data.csv
+
+    Options
+    -------
+    --names, -n
+        Comma-separated column names to move.
+    --indices, -i
+        Comma-separated zero-based column indices to move.
+    --front
+        Move specified columns to the front.
+    --back
+        Move specified columns to the back.
+    --strict, -s
+        Error if a specified column is not found.
+    """
+    check_empty_stdin(input, app, ["move"])
+    if not names and not indices:
+        sys.exit("Must specify --names or --indices.")
+    if not front and not back:
+        sys.exit("Must specify --front or --back.")
+    try:
+        with input.open("r", encoding=encoding) as f:
+            if names is not None:
+                result = lx_csv.move_csv(f, names=[n.strip() for n in names.split(",")], back=back, strict=strict)
+            elif indices is not None:
+                result = lx_csv.move_csv(
+                    f, indices=[int(i.strip()) for i in indices.split(",")], back=back, strict=strict
+                )
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))

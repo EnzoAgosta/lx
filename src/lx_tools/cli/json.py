@@ -16,6 +16,7 @@ app = App(
 """,
 )
 sort_options = Group(validator=cyclopts.validators.mutually_exclusive)
+move_options = Group(validator=cyclopts.validators.mutually_exclusive)
 
 
 @app.command
@@ -226,6 +227,45 @@ def select(
     parsed_keys = [k.strip() for k in keys.split(",")]
     try:
         output.write_bytes(lx_json.select_json(input.read_bytes(), keys=parsed_keys, strict=strict))
+    except lx_json.JSONError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def move(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    keys: Annotated[str, Parameter(name=["--keys", "-k"])],
+    front: Annotated[bool, Parameter(name=["--front"], group=move_options)] = False,
+    back: Annotated[bool, Parameter(name=["--back"], group=move_options)] = False,
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+) -> None:
+    """Reorder keys in a JSON object.
+
+    Moves specified keys to front or back.
+    Remaining keys stay in their original order.
+    Missing keys are silently skipped unless --strict is used.
+
+    Example: lx json move --keys b,a --front '{"a":1,"b":2,"c":3}'
+
+    Options
+    -------
+    --keys, -k
+        Comma-separated keys to move (required).
+    --front
+        Move specified keys to the front.
+    --back
+        Move specified keys to the back.
+    --strict, -s
+        Error if any specified key is missing.
+    """
+    check_empty_stdin(input, app, ["move"])
+    if not front and not back:
+        sys.exit("Must specify --front or --back.")
+    parsed_keys = [k.strip() for k in keys.split(",")]
+    try:
+        output.write_bytes(lx_json.move_json(input.read_bytes(), keys=parsed_keys, back=back, strict=strict))
     except lx_json.JSONError as e:
         sys.exit(str(e))
 

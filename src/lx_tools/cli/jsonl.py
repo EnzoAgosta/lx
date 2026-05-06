@@ -1,7 +1,7 @@
 import sys
 from typing import Annotated
 
-from cyclopts import App, Parameter, validators
+from cyclopts import App, Group, Parameter, validators
 from cyclopts.types import StdioPath
 import orjson
 
@@ -15,6 +15,8 @@ app = App(
     All output normalizes line endings to \\n regardless of input.
     """,
 )
+
+move_options = Group(validator=validators.MutuallyExclusive())
 
 
 @app.command
@@ -258,6 +260,47 @@ def select(
     with input.open("rb") as f:
         try:
             result = lx_jsonl.select_jsonl(f, keys=parsed_keys, strict=strict)
+        except lx_jsonl.JSONLError as e:
+            sys.exit(str(e))
+    output.write_bytes(b"\n".join(result) + b"\n")
+
+
+@app.command
+def move(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    keys: Annotated[str, Parameter(name=["--keys", "-k"])],
+    front: Annotated[bool, Parameter(name=["--front"], group=move_options)] = False,
+    back: Annotated[bool, Parameter(name=["--back"], group=move_options)] = False,
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+) -> None:
+    """Reorder keys in every non-empty JSONL object line.
+
+    Empty lines are dropped.
+    Each line must be a JSON object.
+    Missing keys are silently skipped unless --strict is used.
+
+    Example: lx jsonl move --keys b,a --front file.jsonl
+
+    Options
+    -------
+    --keys, -k
+        Comma-separated keys to move (required).
+    --front
+        Move specified keys to the front.
+    --back
+        Move specified keys to the back.
+    --strict, -s
+        Error if any line is missing a specified key.
+    """
+    check_empty_stdin(input, app, ["move"])
+    if not front and not back:
+        sys.exit("Must specify --front or --back.")
+    parsed_keys = [k.strip() for k in keys.split(",")]
+    with input.open("rb") as f:
+        try:
+            result = lx_jsonl.move_jsonl(f, keys=parsed_keys, back=back, strict=strict)
         except lx_jsonl.JSONLError as e:
             sys.exit(str(e))
     output.write_bytes(b"\n".join(result) + b"\n")

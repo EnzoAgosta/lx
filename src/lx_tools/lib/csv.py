@@ -267,6 +267,81 @@ def rename_csv(stream: TextIO, old: str, new: str) -> str:
     return _format_csv(renamed_header, *reader)
 
 
+def move_csv(
+    stream: TextIO,
+    names: list[str] | None = None,
+    indices: list[int] | None = None,
+    back: bool = False,
+    strict: bool = False,
+) -> str:
+    """Reorder columns in CSV.
+
+    Moves specified columns to front or back, keeping remaining columns
+    in their original order.
+    --names uses the first row as a header.
+    --indices works on all rows by zero-based position.
+    """
+    reader = csv.reader(stream)
+
+    if names is not None:
+        parsed_header = safe_get_next_row(reader)
+        if strict:
+            missing = [n for n in names if n not in parsed_header]
+            if missing:
+                raise CSVError(
+                    f"Column name(s) not found in header: {', '.join(missing)}. Available columns: {parsed_header!r}"
+                )
+
+        seen_indices: set[int] = set()
+        move_indices: list[int] = []
+        for name in names:
+            if name in parsed_header:
+                idx = parsed_header.index(name)
+                if idx not in seen_indices:
+                    move_indices.append(idx)
+                    seen_indices.add(idx)
+
+        remaining = [i for i in range(len(parsed_header)) if i not in seen_indices]
+        new_order = remaining + move_indices if back else move_indices + remaining
+
+        return _format_csv(
+            *(
+                [_get_column_at(row, i, strict=False, row_idx=row_idx, return_None=False) for i in new_order]
+                for row_idx, row in enumerate(chain([parsed_header], reader))
+            )
+        )
+
+    if indices is not None:
+        for i in indices:
+            if i < 0:
+                raise CSVError(f"Negative indexes are not allowed. Got {i!r}.")
+
+        seen: set[int] = set()
+        idx_move: list[int] = []
+        for i in indices:
+            if i not in seen:
+                idx_move.append(i)
+                seen.add(i)
+        used = seen
+
+        result: list[list[str]] = []
+        for row_idx, row in enumerate(reader, start=1):
+            if strict:
+                for idx in idx_move:
+                    if idx >= len(row):
+                        raise CSVError(f"Row {row_idx} has {len(row)} columns but index {idx} requested.")
+            remaining = [i for i in range(len(row)) if i not in used]
+            if back:
+                new_row = [row[i] for i in remaining] + [row[i] for i in idx_move if i < len(row)]
+            else:
+                new_row = [row[i] for i in idx_move if i < len(row)] + [row[i] for i in remaining]
+            result.append(new_row)
+
+        return _format_csv(*result)
+
+    raise CSVError("Must specify names or indices.")
+
+
 def sample_csv(
     stream: TextIO, n: int, *, header: bool = False, seed: int | float | str | bytes | bytearray | None = None
 ) -> str:
