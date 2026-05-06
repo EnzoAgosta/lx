@@ -108,7 +108,7 @@ def dedup_jsonl(lines: Iterable[bytes]) -> list[bytes]:
     Keeps the first occurrence of each unique value.
     Empty lines are dropped.
     """
-    seen: list[object] = []
+    seen: set[bytes] = set()
     result: list[bytes] = []
     for line in lines:
         if not line.strip():
@@ -116,8 +116,9 @@ def dedup_jsonl(lines: Iterable[bytes]) -> list[bytes]:
         data = parse_line(line)
         if data is None:
             continue
-        if data not in seen:
-            seen.append(data)
+        key = orjson.dumps(data)
+        if key not in seen:
+            seen.add(key)
             result.append(line.rstrip(b"\r\n"))
     return result
 

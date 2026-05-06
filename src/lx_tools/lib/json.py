@@ -112,16 +112,16 @@ def dedup_json(data: bytes) -> bytes:
     """Remove duplicate entries from a JSON array.
 
     Keeps the first occurrence of each unique value.
-    Uses deep equality via Python ==.
     """
     obj = _loads(data)
     if not isinstance(obj, list):
         raise JSONError("Input must be a JSON array.")
-    seen: list[object] = []
+    seen: set[bytes] = set()
     result: list[object] = []
     for item in obj:
-        if item not in seen:
-            seen.append(item)
+        key = orjson.dumps(item)
+        if key not in seen:
+            seen.add(key)
             result.append(item)
     return orjson.dumps(result)
 

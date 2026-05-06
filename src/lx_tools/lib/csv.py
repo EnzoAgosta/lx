@@ -231,15 +231,16 @@ def dedup_csv(stream: TextIO, header: bool = False) -> str:
     With header=True, the header row is preserved as-is.
     """
     reader = csv.reader(stream)
-    seen: list[list[str]] = []
+    seen: set[tuple[str, ...]] = set()
     result: list[list[str]] = []
 
     if header:
         result.append(safe_get_next_row(reader))
 
     for row in reader:
-        if row not in seen:
-            seen.append(row)
+        key = tuple(row)
+        if key not in seen:
+            seen.add(key)
             result.append(row)
 
     return _format_csv(*result)
