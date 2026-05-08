@@ -19,7 +19,9 @@ always UTF-8 no matter the input encoding.
 """,
 )
 
-only_one = Group(validator=cyclopts.validators.MutuallyExclusive())
+only_one = Group(validator=cyclopts.validators.mutually_exclusive)
+move_cols = Group(validator=cyclopts.validators.mutually_exclusive)
+move_dir = Group(validator=cyclopts.validators.mutually_exclusive)
 
 
 @app.command
@@ -337,6 +339,155 @@ def sample(
     try:
         with input.open("r", encoding=encoding) as f:
             result = lx_csv.sample_csv(f, n, header=header, seed=seed)
+        output.write_text(result, encoding="utf-8")
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def dedup(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+) -> None:
+    """Remove duplicate data rows from CSV.
+
+    Keeps the first occurrence of each unique row.
+    With --header, the header row is preserved as-is
+    and is not deduplicated against data rows.
+
+    Example: lx csv dedup --header data.csv
+    """
+    check_empty_stdin(input, app, ["dedup"])
+    try:
+        with input.open("r", encoding=encoding) as f:
+            result = lx_csv.dedup_csv(f, header=header)
+        output.write_text(result, encoding="utf-8")
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def validate(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    header: Annotated[bool, Parameter(name=["--header", "-H"])] = False,
+    no_empty: Annotated[bool, Parameter(name=["--no-empty"])] = False,
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+) -> None:
+    """Validate CSV structure.
+
+    Checks that all rows parse successfully and have consistent column counts.
+    With --header, also checks for duplicate header names.
+    With --no-empty, also checks that no cell is empty.
+    --strict is a shortcut for --header --no-empty.
+
+    On success, the input is passed through unchanged.
+
+    Example: lx csv validate --strict data.csv
+
+    Options
+    -------
+    --header, -H
+        Treat the first row as a header and check for duplicate names.
+    --no-empty
+        Error if any cell is empty.
+    --strict, -s
+        Equivalent to --header --no-empty.
+    """
+    check_empty_stdin(input, app, ["validate"])
+    text = input.read_text(encoding=encoding)
+    try:
+        lx_csv.validate_csv(text, header=header or strict, no_empty=no_empty or strict)
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+    output.write_text(text, encoding="utf-8")
+
+
+@app.command
+def rename(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    old: Annotated[str, Parameter(name=["--old"])],
+    new: Annotated[str, Parameter(name=["--new"])],
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+) -> None:
+    """Rename a column by header name.
+
+    The first row is always treated as a header.
+    Errors if the old column is not found, or if the new column name
+    already exists in the header (unless new == old).
+    All data rows are output unchanged.
+
+    Example: lx csv rename --old Name --new FullName data.csv
+    """
+    check_empty_stdin(input, app, ["rename"])
+    try:
+        with input.open("r", encoding=encoding) as f:
+            result = lx_csv.rename_csv(f, old=old, new=new)
+        output.write_text(result, encoding="utf-8")
+    except lx_csv.CSVError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def move(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    names: Annotated[str | None, Parameter(name=["--names", "-n"], group=move_cols)] = None,
+    indices: Annotated[str | None, Parameter(name=["--indices", "-i"], group=move_cols)] = None,
+    front: Annotated[bool, Parameter(name=["--front"], group=move_dir)] = False,
+    back: Annotated[bool, Parameter(name=["--back"], group=move_dir)] = False,
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+    encoding: Annotated[str, Parameter(name=["--encoding", "-e"])] = "utf-8",
+) -> None:
+    """Reorder columns in CSV.
+
+    Moves specified columns to front or back.
+    Remaining columns stay in their original order.
+
+    Use --names to specify columns by header name (first row is header).
+    Use --indices to specify columns by zero-based index.
+
+    Missing columns are silently skipped unless --strict is used.
+
+    Example: lx csv move --names Age,Name --front data.csv
+    Example: lx csv move --indices 2,0 --back data.csv
+
+    Options
+    -------
+    --names, -n
+        Comma-separated column names to move.
+    --indices, -i
+        Comma-separated zero-based column indices to move.
+    --front
+        Move specified columns to the front.
+    --back
+        Move specified columns to the back.
+    --strict, -s
+        Error if a specified column is not found.
+    """
+    check_empty_stdin(input, app, ["move"])
+    if not names and not indices:
+        sys.exit("Must specify --names or --indices.")
+    if not front and not back:
+        sys.exit("Must specify --front or --back.")
+    try:
+        with input.open("r", encoding=encoding) as f:
+            if names is not None:
+                result = lx_csv.move_csv_by_name(
+                    f, names=[n.strip() for n in names.split(",")], back=back, strict=strict
+                )
+            elif indices is not None:
+                result = lx_csv.move_csv_by_index(
+                    f, indices=[int(i.strip()) for i in indices.split(",")], back=back, strict=strict
+                )
         output.write_text(result, encoding="utf-8")
     except lx_csv.CSVError as e:
         sys.exit(str(e))

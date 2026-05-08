@@ -224,6 +224,153 @@ def shuffle_csv(
     return _format_csv(parsed_header, *rows) if parsed_header is not None else _format_csv(*rows)
 
 
+def dedup_csv(stream: TextIO, header: bool = False) -> str:
+    """Remove duplicate data rows from CSV.
+
+    Keeps the first occurrence of each unique row.
+    With header=True, the header row is preserved as-is.
+    """
+    reader = csv.reader(stream)
+    seen: set[tuple[str, ...]] = set()
+    result: list[list[str]] = []
+
+    if header:
+        result.append(safe_get_next_row(reader))
+
+    for row in reader:
+        key = tuple(row)
+        if key not in seen:
+            seen.add(key)
+            result.append(row)
+
+    return _format_csv(*result)
+
+
+def rename_csv(stream: TextIO, old: str, new: str) -> str:
+    """Rename a column by header name.
+
+    The first row is always treated as a header.
+    Raises CSVError if the old column is not found,
+    or if the new column name already exists
+    (unless new == old, in which case it's a no-op).
+    All data rows are output unchanged.
+    """
+    reader = csv.reader(stream)
+    parsed_header = safe_get_next_row(reader)
+    if old not in parsed_header:
+        raise CSVError(f"Column name not found in header: {old!r}. Available columns: {parsed_header!r}")
+    if new in parsed_header and new != old:
+        raise CSVError(f"Column name {new!r} already exists in header.")
+    if old == new:
+        return _format_csv(parsed_header, *reader)
+    renamed_header = [new if cell == old else cell for cell in parsed_header]
+    return _format_csv(renamed_header, *reader)
+
+
+def _build_move_order(move: list[int], total: int, back: bool) -> list[int]:
+    """Compute the new column index order.
+
+    Move specified indices to front or back.
+    Remaining indices (0..total-1 not in move) keep their relative order.
+    """
+    remaining = [i for i in range(total) if i not in move]
+    return remaining + move if back else move + remaining
+
+
+def move_csv_by_name(stream: TextIO, names: list[str], back: bool = False, strict: bool = False) -> str:
+    """Reorder columns by header name.
+
+    The first row is treated as a header.
+    """
+    reader = csv.reader(stream)
+    parsed_header = safe_get_next_row(reader)
+    if strict:
+        missing = [n for n in names if n not in parsed_header]
+        if missing:
+            raise CSVError(
+                f"Column name(s) not found in header: {', '.join(missing)}. Available columns: {parsed_header!r}"
+            )
+
+    seen: set[int] = set()
+    move_indices: list[int] = []
+    for name in names:
+        if name in parsed_header:
+            idx = parsed_header.index(name)
+            if idx not in seen:
+                move_indices.append(idx)
+                seen.add(idx)
+
+    order = _build_move_order(move_indices, len(parsed_header), back)
+    return _format_csv(
+        *(
+            [_get_column_at(row, i, strict=False, row_idx=row_idx, return_None=False) for i in order]
+            for row_idx, row in enumerate(chain([parsed_header], reader))
+        )
+    )
+
+
+def move_csv_by_index(stream: TextIO, indices: list[int], back: bool = False, strict: bool = False) -> str:
+    """Reorder columns by zero-based index."""
+    reader = csv.reader(stream)
+    for i in indices:
+        if i < 0:
+            raise CSVError(f"Negative indexes are not allowed. Got {i!r}.")
+
+    seen: set[int] = set()
+    move_indices: list[int] = []
+    for i in indices:
+        if i not in seen:
+            move_indices.append(i)
+            seen.add(i)
+
+    result: list[list[str]] = []
+    for row_idx, row in enumerate(reader, start=1):
+        if strict:
+            for idx in move_indices:
+                if idx >= len(row):
+                    raise CSVError(f"Row {row_idx} has {len(row)} columns but index {idx} requested.")
+        order = _build_move_order(move_indices, len(row), back)
+        result.append([_get_column_at(row, i, strict=False, row_idx=row_idx, return_None=False) for i in order])
+
+    return _format_csv(*result)
+
+
+def validate_csv(data: str, header: bool = False, no_empty: bool = False) -> None:
+    """Validate CSV structure.
+
+    Checks that all rows parse successfully and have consistent column counts.
+    With header=True, also checks for duplicate header names.
+    With no_empty=True, also checks that no cell is empty.
+
+    Raises CSVError on any validation failure.
+    """
+    reader = csv.reader(io.StringIO(data))
+
+    first_row = safe_get_next_row(reader)
+
+    expected_cols = len(first_row)
+
+    if header:
+        seen: set[str] = set()
+        for name in first_row:
+            if name in seen:
+                raise CSVError(f"Duplicate header name: {name!r}")
+            seen.add(name)
+
+    if no_empty:
+        for col_idx, cell in enumerate(first_row):
+            if cell == "":
+                raise CSVError(f"Empty cell at row 1, column {col_idx}.")
+
+    for row_idx, row in enumerate(reader, start=2):
+        if len(row) != expected_cols:
+            raise CSVError(f"Row {row_idx} has {len(row)} columns but expected {expected_cols}.")
+        if no_empty:
+            for col_idx, cell in enumerate(row):
+                if cell == "":
+                    raise CSVError(f"Empty cell at row {row_idx}, column {col_idx}.")
+
+
 def sample_csv(
     stream: TextIO, n: int, *, header: bool = False, seed: int | float | str | bytes | bytearray | None = None
 ) -> str:

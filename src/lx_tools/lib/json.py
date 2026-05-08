@@ -13,7 +13,7 @@ def _loads(data: bytes) -> object:
         raise JSONError(f"Invalid JSON: {e}") from e
 
 
-def _sort_array_by_key(array: list, key: str, *, reverse: bool = False, strict: bool = False) -> bytes:
+def _sort_array_by_key(array: list[object], key: str, *, reverse: bool = False, strict: bool = False) -> bytes:
     """Sort an array of objects by a top-level key."""
     entries = []
     for item in array:
@@ -106,6 +106,95 @@ def reverse_json(data: bytes, *, key: str | None = None, strict: bool = False) -
             return orjson.dumps(list(reversed(obj)))
         case _:
             raise RuntimeError(f"Unexpected type: {type(obj)}")
+
+
+def dedup_json(data: bytes) -> bytes:
+    """Remove duplicate entries from a JSON array.
+
+    Keeps the first occurrence of each unique value.
+    """
+    obj = _loads(data)
+    if not isinstance(obj, list):
+        raise JSONError("Input must be a JSON array.")
+    seen: set[bytes] = set()
+    result: list[object] = []
+    for item in obj:
+        key = orjson.dumps(item)
+        if key not in seen:
+            seen.add(key)
+            result.append(item)
+    return orjson.dumps(result)
+
+
+def rename_json(data: bytes, old: str, new: str) -> bytes:
+    """Rename a top-level key in a JSON object.
+
+    Preserves key order.
+    Raises JSONError if the input is not an object,
+    if the old key does not exist, or if the new key already exists
+    (unless new == old, in which case it's a no-op).
+    """
+    obj = _loads(data)
+    if not isinstance(obj, dict):
+        raise JSONError("Input must be a JSON object.")
+    if old not in obj:
+        raise JSONError(f"Key {old!r} not found in object.")
+    if new in obj and new != old:
+        raise JSONError(f"Key {new!r} already exists in object.")
+    if old == new:
+        return data
+    result = {new if k == old else k: v for k, v in obj.items()}
+    return orjson.dumps(result)
+
+
+def pluck_json(data: bytes, key: str) -> bytes:
+    """Extract a top-level key value from a JSON object.
+
+    Returns the value, not wrapped in an object.
+    Raises JSONError if input is not an object or key is missing.
+    """
+    obj = _loads(data)
+    if not isinstance(obj, dict):
+        raise JSONError("Input must be a JSON object.")
+    if key not in obj:
+        raise JSONError(f"Key {key!r} not found in object.")
+    return orjson.dumps(obj[key])
+
+
+def select_json(data: bytes, keys: list[str], strict: bool = False) -> bytes:
+    """Select specific keys from a JSON object.
+
+    Output contains only the specified keys, in the order given.
+    Missing keys are silently omitted unless strict=True.
+    """
+    obj = _loads(data)
+    if not isinstance(obj, dict):
+        raise JSONError("Input must be a JSON object.")
+    if strict:
+        missing = [k for k in keys if k not in obj]
+        if missing:
+            raise JSONError(f"Missing key(s) in object: {', '.join(missing)}")
+    result = {k: obj[k] for k in keys if k in obj}
+    return orjson.dumps(result)
+
+
+def move_json(data: bytes, keys: list[str], back: bool = False, strict: bool = False) -> bytes:
+    """Reorder keys in a JSON object.
+
+    Moves specified keys to front or back, keeping remaining keys
+    in their original order.
+    """
+    obj = _loads(data)
+    if not isinstance(obj, dict):
+        raise JSONError("Input must be a JSON object.")
+    if strict:
+        missing = [k for k in keys if k not in obj]
+        if missing:
+            raise JSONError(f"Missing key(s) in object: {', '.join(missing)}")
+    existing = [k for k in keys if k in obj]
+    remaining = [k for k in obj if k not in existing]
+    order = remaining + existing if back else existing + remaining
+    return orjson.dumps({k: obj[k] for k in order})
 
 
 def to_jsonl(data: bytes) -> bytes:

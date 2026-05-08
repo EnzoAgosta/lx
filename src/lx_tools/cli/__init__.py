@@ -30,10 +30,10 @@ prints the command's help and exits with status 0.
 )
 
 # Import sub-apps after type aliases to avoid circular imports.
-from lx_tools.cli.csv import app as csv_app
-from lx_tools.cli.encoding import app as encoding_app
-from lx_tools.cli.json import app as json_app
-from lx_tools.cli.jsonl import app as jsonl_app
+from lx_tools.cli.csv import app as csv_app  # noqa: E402
+from lx_tools.cli.encoding import app as encoding_app  # noqa: E402
+from lx_tools.cli.json import app as json_app  # noqa: E402
+from lx_tools.cli.jsonl import app as jsonl_app  # noqa: E402
 
 app.command(json_app)
 app.command(jsonl_app)

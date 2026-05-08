@@ -1,7 +1,7 @@
 import sys
 from typing import Annotated
 
-from cyclopts import App, Parameter, validators
+from cyclopts import App, Group, Parameter, validators
 from cyclopts.types import StdioPath
 import orjson
 
@@ -15,6 +15,8 @@ app = App(
     All output normalizes line endings to \\n regardless of input.
     """,
 )
+
+move_options = Group(validator=validators.mutually_exclusive)
 
 
 @app.command
@@ -36,6 +38,27 @@ def count(
         output.write_text(f"{n}\n")
     except lx_jsonl.JSONLError as e:
         sys.exit(str(e))
+
+
+@app.command
+def dedup(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+) -> None:
+    """Remove duplicate lines from JSON Lines.
+
+    Keeps the first occurrence of each unique JSON value.
+    Empty lines are dropped.
+
+    Example: lx jsonl dedup file.jsonl
+    """
+    check_empty_stdin(input, app, ["dedup"])
+    with input.open("rb") as f:
+        try:
+            result = lx_jsonl.dedup_jsonl(f)
+        except lx_jsonl.JSONLError as e:
+            sys.exit(str(e))
+    output.write_bytes(b"\n".join(result) + b"\n")
 
 
 @app.command
@@ -209,32 +232,135 @@ def reverse(
 
 
 @app.command
+def select(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    keys: Annotated[str, Parameter(name=["--keys", "-k"])],
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+) -> None:
+    """Select specific keys from every non-empty JSON object line.
+
+    Empty lines are dropped.
+    Each line must be a JSON object.
+    Missing keys are silently omitted by default.
+    Use --strict to error if a key is missing in any line.
+
+    Example: lx jsonl select --keys name,age users.jsonl
+
+    Options
+    -------
+    --keys, -k
+        Comma-separated keys to keep (required).
+    --strict, -s
+        Error if any line is missing a key.
+    """
+    check_empty_stdin(input, app, ["select"])
+    parsed_keys = [k.strip() for k in keys.split(",")]
+    with input.open("rb") as f:
+        try:
+            result = lx_jsonl.select_jsonl(f, keys=parsed_keys, strict=strict)
+        except lx_jsonl.JSONLError as e:
+            sys.exit(str(e))
+    output.write_bytes(b"\n".join(result) + b"\n")
+
+
+@app.command
 def pluck(
     input: InputType = StdioPath("-"),
     output: OutputType = StdioPath("-"),
     *,
     key: Annotated[str, Parameter(name=["--key", "-k"])],
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
 ) -> None:
-    """Extract a top-level field from each non-empty JSON object line.
+    """Extract a top-level key value from each non-empty JSONL object line.
 
-    Outputs one JSON value per line.
-    Lines that are not objects or that
-    lack the key are silently skipped.
+    Empty lines are dropped.
+    Each line must be a JSON object.
+    Missing keys are silently skipped unless --strict is used.
 
     Example: lx jsonl pluck --key name users.jsonl
 
     Options
     -------
     --key, -k
-        The field to extract (required).
+        The key to extract (required).
+    --strict, -s
+        Error if a line is missing the key.
     """
     check_empty_stdin(input, app, ["pluck"])
     with input.open("rb") as f:
         try:
-            result = [lx_jsonl.pluck_field(line, key) for line in f]
+            result = lx_jsonl.pluck_jsonl(f, key=key, strict=strict)
         except lx_jsonl.JSONLError as e:
             sys.exit(str(e))
-    output.write_bytes(b"\n".join(orjson.dumps(line) for line in result if line is not None) + b"\n")
+    output.write_bytes(b"\n".join(result) + b"\n")
+
+
+@app.command
+def move(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    keys: Annotated[str, Parameter(name=["--keys", "-k"])],
+    front: Annotated[bool, Parameter(name=["--front"], group=move_options)] = False,
+    back: Annotated[bool, Parameter(name=["--back"], group=move_options)] = False,
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+) -> None:
+    """Reorder keys in every non-empty JSONL object line.
+
+    Empty lines are dropped.
+    Each line must be a JSON object.
+    Missing keys are silently skipped unless --strict is used.
+
+    Example: lx jsonl move --keys b,a --front file.jsonl
+
+    Options
+    -------
+    --keys, -k
+        Comma-separated keys to move (required).
+    --front
+        Move specified keys to the front.
+    --back
+        Move specified keys to the back.
+    --strict, -s
+        Error if any line is missing a specified key.
+    """
+    check_empty_stdin(input, app, ["move"])
+    if not front and not back:
+        sys.exit("Must specify --front or --back.")
+    parsed_keys = [k.strip() for k in keys.split(",")]
+    with input.open("rb") as f:
+        try:
+            result = lx_jsonl.move_jsonl(f, keys=parsed_keys, back=back, strict=strict)
+        except lx_jsonl.JSONLError as e:
+            sys.exit(str(e))
+    output.write_bytes(b"\n".join(result) + b"\n")
+
+
+@app.command
+def rename(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    old: Annotated[str, Parameter(name=["--old"])],
+    new: Annotated[str, Parameter(name=["--new"])],
+) -> None:
+    """Rename a top-level key in every non-empty JSONL object line.
+
+    Empty lines are dropped.
+    Errors if any line is not an object, if the old key is missing,
+    or if the new key already exists in that object (unless new == old).
+
+    Example: lx jsonl rename --old name --new full_name data.jsonl
+    """
+    check_empty_stdin(input, app, ["rename"])
+    with input.open("rb") as f:
+        try:
+            result = lx_jsonl.rename_jsonl(f, old=old, new=new)
+        except lx_jsonl.JSONLError as e:
+            sys.exit(str(e))
+    output.write_bytes(b"\n".join(result) + b"\n")
 
 
 @app.command

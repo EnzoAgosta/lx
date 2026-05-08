@@ -15,8 +15,8 @@ app = App(
     Relies on orjson for all json I/O.
 """,
 )
-
-sort_options = Group(validator=cyclopts.validators.MutuallyExclusive())
+sort_options = Group(validator=cyclopts.validators.mutually_exclusive)
+move_options = Group(validator=cyclopts.validators.mutually_exclusive)
 
 
 @app.command
@@ -154,6 +154,144 @@ def reverse(
     check_empty_stdin(input, app, ["reverse"])
     try:
         output.write_bytes(lx_json.reverse_json(input.read_bytes(), key=key, strict=strict))
+    except lx_json.JSONError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def dedup(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+) -> None:
+    """Remove duplicate entries from a JSON array.
+
+    Keeps the first occurrence of each unique value.
+    Input must be a top-level JSON array.
+
+    Example: lx json dedup '[1,2,1,3]'
+    """
+    check_empty_stdin(input, app, ["dedup"])
+    try:
+        output.write_bytes(lx_json.dedup_json(input.read_bytes()))
+    except lx_json.JSONError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def rename(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    old: Annotated[str, Parameter(name=["--old"])],
+    new: Annotated[str, Parameter(name=["--new"])],
+) -> None:
+    """Rename a top-level key in a JSON object.
+
+    Preserves key order.
+    Errors if the input is not an object, if the old key does not exist,
+    or if the new key already exists (unless new == old).
+
+    Example: lx json rename --old name --new full_name data.json
+    """
+    check_empty_stdin(input, app, ["rename"])
+    try:
+        output.write_bytes(lx_json.rename_json(input.read_bytes(), old=old, new=new))
+    except lx_json.JSONError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def select(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    keys: Annotated[str, Parameter(name=["--keys", "-k"])],
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+) -> None:
+    """Select specific keys from a JSON object.
+
+    Output contains only the specified keys, in the order given.
+    Missing keys are silently omitted by default.
+    Use --strict to error if a key is missing.
+
+    Example: lx json select --keys name,age user.json
+
+    Options
+    -------
+    --keys, -k
+        Comma-separated keys to keep (required).
+    --strict, -s
+        Error if any key is missing from the object.
+    """
+    check_empty_stdin(input, app, ["select"])
+    parsed_keys = [k.strip() for k in keys.split(",")]
+    try:
+        output.write_bytes(lx_json.select_json(input.read_bytes(), keys=parsed_keys, strict=strict))
+    except lx_json.JSONError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def move(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    keys: Annotated[str, Parameter(name=["--keys", "-k"])],
+    front: Annotated[bool, Parameter(name=["--front"], group=move_options)] = False,
+    back: Annotated[bool, Parameter(name=["--back"], group=move_options)] = False,
+    strict: Annotated[bool, Parameter(name=["--strict", "-s"])] = False,
+) -> None:
+    """Reorder keys in a JSON object.
+
+    Moves specified keys to front or back.
+    Remaining keys stay in their original order.
+    Missing keys are silently skipped unless --strict is used.
+
+    Example: lx json move --keys b,a --front '{"a":1,"b":2,"c":3}'
+
+    Options
+    -------
+    --keys, -k
+        Comma-separated keys to move (required).
+    --front
+        Move specified keys to the front.
+    --back
+        Move specified keys to the back.
+    --strict, -s
+        Error if any specified key is missing.
+    """
+    check_empty_stdin(input, app, ["move"])
+    if not front and not back:
+        sys.exit("Must specify --front or --back.")
+    parsed_keys = [k.strip() for k in keys.split(",")]
+    try:
+        output.write_bytes(lx_json.move_json(input.read_bytes(), keys=parsed_keys, back=back, strict=strict))
+    except lx_json.JSONError as e:
+        sys.exit(str(e))
+
+
+@app.command
+def pluck(
+    input: InputType = StdioPath("-"),
+    output: OutputType = StdioPath("-"),
+    *,
+    key: Annotated[str, Parameter(name=["--key", "-k"])],
+) -> None:
+    """Extract a top-level key value from a JSON object.
+
+    Returns just the value, not wrapped in an object.
+    Errors if the input is not an object or the key is missing.
+
+    Example: lx json pluck --key name user.json
+
+    Options
+    -------
+    --key, -k
+        The key to extract (required).
+    """
+    check_empty_stdin(input, app, ["pluck"])
+    try:
+        output.write_bytes(lx_json.pluck_json(input.read_bytes(), key=key))
     except lx_json.JSONError as e:
         sys.exit(str(e))
 
